@@ -110,4 +110,5 @@ def build_demo_view(result: dict) -> dict:
         },
         "source_check": result.get("source_check", {}),
         "policy_check": result.get("policy_check", {}),
+        "provider_status": result.get("provider_status"),
     }

@@ -21,6 +21,21 @@ def test_example_question_produces_displayable_evidence():
     assert view["decision"]["label"] in {"可展示", "需要复核"}
 
 
+def test_llm_metadata_is_exposed_when_llm_mode_is_enabled():
+    os.environ["DACHUANG_RETRIEVE_MODE"] = "mock"
+    os.environ["DACHUANG_LOCAL_MOCK_ACK"] = "1"
+    os.environ["DACHUANG_GENERATOR_MODE"] = "llm"
+    os.environ["DACHUANG_LLM_PROVIDER"] = "zhipu"
+    os.environ.pop("ZHIPUAI_API_KEY", None)
+
+    result = retrieve("三湾改编对人民军队建设有什么意义？")
+    view = build_demo_view(result)
+
+    assert result["generator_mode"] == "llm"
+    assert result["provider_status"] == "missing_api_key"
+    assert view["provider_status"] == "missing_api_key"
+
+
 @pytest.mark.parametrize(
     ("question", "expected_top_hit"),
     [

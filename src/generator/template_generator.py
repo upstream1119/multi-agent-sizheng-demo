@@ -61,7 +61,7 @@ def generate_answer_from_hits(query: str, hybrid_hits: list[dict], max_hits: int
         "\n\n"
         "引用依据：\n"
         + "\n".join(citation_lines)
-        + "\n\n以上回答仅依据当前检索到的证据生成，后续仍需要溯源审查智能体和政治红线审查智能体进一步复核。"
+        + "\n\n以上回答仅依据当前检索到的证据生成，系统已同步给出来源核验与内容规范初筛结果。"
     )
     return {
         "answer": answer,

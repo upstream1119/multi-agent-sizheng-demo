@@ -1,5 +1,6 @@
 import html
 import os
+import time
 
 import streamlit as st
 
@@ -9,7 +10,8 @@ from src.retriever.hybrid_retriever import retrieve
 
 os.environ["DACHUANG_RETRIEVE_MODE"] = "mock"
 os.environ["DACHUANG_LOCAL_MOCK_ACK"] = "1"
-os.environ["DACHUANG_GENERATOR_MODE"] = "template"
+os.environ["DACHUANG_GENERATOR_MODE"] = "llm"
+os.environ["DACHUANG_LLM_PROVIDER"] = "zhipu"
 
 EXAMPLE_QUESTIONS = [
     "中国共产党思想政治教育史为什么重要？",
@@ -23,6 +25,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+try:
+    secret_api_key = st.secrets.get("ZHIPUAI_API_KEY", "")
+except Exception:
+    secret_api_key = ""
+if secret_api_key and not os.getenv("ZHIPUAI_API_KEY"):
+    os.environ["ZHIPUAI_API_KEY"] = secret_api_key
 
 st.markdown(
     """
@@ -435,7 +444,7 @@ st.markdown(
 
 st.markdown('<div class="section-title">一键示例</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="section-note">点击任一示例，系统将立即完成分析。</div>',
+    '<div class="section-note">点击任一示例，系统将依次完成检索、生成、溯源审查与内容规范审查。</div>',
     unsafe_allow_html=True,
 )
 
@@ -463,9 +472,20 @@ if selected_question or analyze:
     if not active_question:
         st.warning("请先输入一个问题。")
     else:
-        with st.spinner("正在调度多个智能体完成受控任务流..."):
+        with st.status("正在执行受控多智能体任务流...", expanded=True) as status:
+            st.write("1. 检索智能体：正在从固定知识库召回相关证据。")
+            time.sleep(0.25)
+            st.write("2. 回答生成智能体：正在基于证据调用 GLM-4.5-Air 生成回答。")
+            time.sleep(0.25)
+            st.write("3. 溯源审查智能体：正在核验回答是否具备 citation 支撑。")
+            time.sleep(0.25)
+            st.write("4. 内容规范审查智能体：正在进行规则初筛并形成任务报告。")
             st.session_state["result"] = build_demo_view(retrieve(active_question))
             st.session_state["last_question"] = active_question
+            provider_status = st.session_state["result"].get("provider_status")
+            if provider_status and provider_status != "success":
+                st.write(f"提示：生成 API 状态为 {provider_status}，系统已启用本地兜底回答。")
+            status.update(label="多智能体任务流执行完成", state="complete")
 
 if "result" in st.session_state:
     st.caption(f"本次问题：{st.session_state['last_question']}")

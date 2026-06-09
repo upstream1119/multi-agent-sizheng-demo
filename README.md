@@ -3,17 +3,18 @@
 这是一个独立的 Streamlit 演示项目，用于展示受控流程式多智能体在固定知识库上的协同任务流：
 
 - 检索智能体：从固定知识库中召回相关证据。
-- 回答生成智能体：只依据已召回证据组织教学回答。
+- 回答生成智能体：只依据已召回证据调用 GLM-4.5-Air 组织教学回答。
 - 溯源审查智能体：核验回答是否具备 citation 支撑。
 - 内容规范审查智能体：对表达边界和复核风险进行规则初筛。
 - 任务完成报告：展示证据数量、引用数量与审查状态。
 
-项目不调用外部大模型，不需要 API Key，也不依赖原大创仓库运行。
+项目默认使用固定知识库检索，并通过 GLM-4.5-Air API 增强回答生成。若 API Key 未配置或接口暂时不可用，系统会自动回退到本地模板回答，保证页面可展示。
 
 ## 本地启动
 
 ```powershell
 pip install -r requirements.txt
+$env:ZHIPUAI_API_KEY="你的智谱 API Key"
 streamlit run streamlit_app.py
 ```
 
@@ -25,7 +26,13 @@ streamlit run streamlit_app.py
 4. 选择该 GitHub 仓库。
 5. Branch 填写 `main`。
 6. Main file path 填写 `streamlit_app.py`。
-7. 点击 `Deploy`，等待生成公开网址。
+7. 展开 Advanced settings，在 Secrets 中填写：
+
+```toml
+ZHIPUAI_API_KEY = "你的智谱 API Key"
+```
+
+8. 点击 `Deploy`，等待生成公开网址。
 
 ## 使用建议
 
