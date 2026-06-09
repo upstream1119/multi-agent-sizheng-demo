@@ -18,7 +18,7 @@ EXAMPLE_QUESTIONS = [
 ]
 
 st.set_page_config(
-    page_title="多智能体思政可信问答演示系统",
+    page_title="多智能体协同教学问答助手",
     page_icon="知",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -73,7 +73,7 @@ st.markdown(
     }
 
     .hero::after {
-        content: "可信";
+        content: "协同";
         position: absolute;
         right: 2rem;
         top: -.7rem;
@@ -177,13 +177,17 @@ st.markdown(
         line-height: 1.9;
     }
 
-    .stage-grid {
+    .agent-grid,
+    .stage-grid,
+    .report-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: .8rem;
         margin: .8rem 0 1.2rem;
     }
 
+    .agent-card,
+    .report-card,
     .stage {
         padding: 1rem;
         border: 1px solid var(--line);
@@ -191,14 +195,66 @@ st.markdown(
         background: rgba(255,255,255,.72);
     }
 
+    .agent-card {
+        position: relative;
+        min-height: 8.2rem;
+    }
+
+    .agent-card::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: .65rem;
+        height: .65rem;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: .72;
+    }
+
+    .agent-name,
+    .report-value,
     .stage-label {
         color: var(--ink);
         font-weight: 700;
     }
 
+    .agent-task {
+        margin-top: .65rem;
+        color: var(--muted);
+        font-size: .88rem;
+        line-height: 1.65;
+    }
+
+    .agent-status,
+    .report-label,
     .stage-status {
         margin-top: .3rem;
         font-size: .86rem;
+    }
+
+    .report-value {
+        color: var(--red-deep);
+        font-size: 1.35rem;
+    }
+
+    .flow-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        align-items: center;
+        margin: .85rem 0 1.15rem;
+        color: var(--muted);
+        font-size: .92rem;
+    }
+
+    .flow-node {
+        padding: .4rem .65rem;
+        border: 1px solid rgba(140, 29, 40, .16);
+        border-radius: 999px;
+        background: rgba(255,255,255,.68);
+        color: var(--red-deep);
+        font-weight: 650;
     }
 
     .success { color: #357052; }
@@ -235,7 +291,9 @@ st.markdown(
         .block-container { padding: 1rem; }
         .hero { padding: 1.6rem 1.35rem; }
         .hero::after { display: none; }
-        .stage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .agent-grid,
+        .stage-grid,
+        .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     </style>
     """,
@@ -256,14 +314,79 @@ def render_stage_cards(stages: list[dict]) -> None:
     st.markdown(f'<div class="stage-grid">{cards}</div>', unsafe_allow_html=True)
 
 
+def render_agent_workbench(agents: list[dict]) -> None:
+    cards = "".join(
+        (
+            f'<div class="agent-card {agent["tone"]}">'
+            f'<div class="agent-name">{html.escape(agent["name"])}</div>'
+            f'<div class="agent-status {agent["tone"]}">{html.escape(agent["status"])}</div>'
+            f'<div class="agent-task">{html.escape(agent["task"])}</div>'
+            f"</div>"
+        )
+        for agent in agents
+    )
+    st.markdown(f'<div class="agent-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_task_report(report: dict) -> None:
+    items = [
+        ("召回证据", f'{report["evidence_count"]} 条'),
+        ("引用来源", f'{report["citation_count"]} 条'),
+        ("溯源审查", report["source_status"]),
+        ("规范初筛", report["policy_status"]),
+    ]
+    cards = "".join(
+        (
+            f'<div class="report-card">'
+            f'<div class="report-value">{html.escape(value)}</div>'
+            f'<div class="report-label">{html.escape(label)}</div>'
+            f"</div>"
+        )
+        for label, value in items
+    )
+    st.markdown(f'<div class="report-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_controlled_flow() -> None:
+    st.markdown(
+        """
+        <div class="flow-strip">
+            <span class="flow-node">用户任务</span>
+            <span>→</span>
+            <span class="flow-node">检索智能体</span>
+            <span>→</span>
+            <span class="flow-node">回答生成智能体</span>
+            <span>→</span>
+            <span class="flow-node">溯源审查智能体</span>
+            <span>→</span>
+            <span class="flow-node">内容规范审查智能体</span>
+            <span>→</span>
+            <span class="flow-node">任务报告</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_result(view: dict) -> None:
+    st.markdown('<div class="section-title">智能体工作台</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">系统采用受控流程式多智能体协同：每个智能体只负责固定环节，按顺序完成任务。</div>',
+        unsafe_allow_html=True,
+    )
+    render_agent_workbench(view["agents"])
+    render_controlled_flow()
+
+    st.markdown('<div class="section-title">任务完成报告</div>', unsafe_allow_html=True)
+    render_task_report(view["task_report"])
+
     st.markdown('<div class="section-title">可信回答</div>', unsafe_allow_html=True)
     answer_html = html.escape(view["answer"]).replace("\n", "<br>")
     st.markdown(f'<div class="answer-card">{answer_html}</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-title">多智能体协同流程</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">受控任务流</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-note">系统依次完成证据检索、回答生成、来源核验与内容规范初筛。</div>',
+        '<div class="section-note">下方展示本次任务中各流程节点的执行状态。</div>',
         unsafe_allow_html=True,
     )
     render_stage_cards(view["stages"])
@@ -293,17 +416,17 @@ def render_result(view: dict) -> None:
 st.markdown(
     """
     <div class="hero">
-        <div class="eyebrow">KNOWLEDGE · EVIDENCE · REVIEW</div>
-        <h1>多智能体思政可信问答演示系统</h1>
+        <div class="eyebrow">CONTROLLED MULTI-AGENT WORKFLOW</div>
+        <h1>多智能体协同教学问答助手</h1>
         <p>
-            面向思想政治教育场景，以固定知识库为依据，
-            展示证据检索、回答生成、来源核验与内容规范初筛的协同流程。
+            面向思想政治教育场景，系统将一次提问拆分为固定任务流，
+            由检索、生成、溯源审查与内容规范审查智能体分工完成。
         </p>
         <div class="badges">
+            <span class="badge">受控流程式多智能体</span>
             <span class="badge">固定知识库</span>
             <span class="badge">证据可追溯</span>
-            <span class="badge">多阶段协同审查</span>
-            <span class="badge">离线稳定演示</span>
+            <span class="badge">任务报告可视化</span>
         </div>
     </div>
     """,
@@ -333,14 +456,14 @@ question = st.text_area(
     height=110,
     label_visibility="collapsed",
 )
-analyze = st.button("开始可信分析", type="primary", use_container_width=True)
+analyze = st.button("启动多智能体协同分析", type="primary", use_container_width=True)
 
 if selected_question or analyze:
     active_question = selected_question or question.strip()
     if not active_question:
         st.warning("请先输入一个问题。")
     else:
-        with st.spinner("正在检索证据并完成协同审查..."):
+        with st.spinner("正在调度多个智能体完成受控任务流..."):
             st.session_state["result"] = build_demo_view(retrieve(active_question))
             st.session_state["last_question"] = active_question
 

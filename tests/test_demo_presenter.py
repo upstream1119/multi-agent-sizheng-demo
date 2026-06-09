@@ -34,10 +34,16 @@ def test_build_demo_view_formats_successful_result():
 
     assert view["answer"] == "基于证据形成的回答。"
     assert view["stages"][0]["label"] == "证据检索"
+    assert view["agents"][0]["name"] == "检索智能体"
+    assert view["agents"][0]["task"] == "从固定知识库中召回相关证据。"
     assert all(stage["tone"] == "success" for stage in view["stages"])
     assert view["evidence"][0]["source"] == (
         "《中国共产党思想政治教育史》 · 延安时期 · 第 126 页"
     )
+    assert view["task_report"]["evidence_count"] == 1
+    assert view["task_report"]["citation_count"] == 0
+    assert view["task_report"]["source_status"] == "已完成"
+    assert view["task_report"]["policy_status"] == "已完成"
     assert view["decision"]["label"] == "可展示"
 
 
