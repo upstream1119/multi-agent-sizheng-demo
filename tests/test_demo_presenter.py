@@ -23,7 +23,7 @@ def test_build_demo_view_formats_successful_result():
             {"role": "政治红线审查智能体", "status": "pass"},
         ],
         "source_check": {"status": "pass", "issues": []},
-        "policy_check": {"status": "pass", "issues": []},
+        "policy_check": {"status": "pass", "issues": [], "risk_types": []},
         "final_decision": {
             "status": "approved",
             "reason": "溯源检查和政治红线初筛均通过。",
@@ -52,6 +52,17 @@ def test_build_demo_view_formats_successful_result():
     assert view["execution_steps"][1]["agent"] == "回答生成智能体"
     assert view["execution_steps"][1]["tool"] == "GLM-4.5-Air API / 本地兜底生成器"
     assert view["execution_steps"][2]["output"] == "完成 0 条 citation 核验。"
+    assert [item["agent"] for item in view["agent_outputs"]] == [
+        "检索智能体",
+        "回答生成智能体",
+        "溯源审查智能体",
+        "内容规范审查智能体",
+    ]
+    assert view["agent_outputs"][0]["expanded"] is True
+    assert view["agent_outputs"][1]["expanded"] is True
+    assert view["agent_outputs"][2]["expanded"] is False
+    assert "hybrid_score" in view["agent_outputs"][0]["details"][0]["lines"][1]
+    assert "回答生成结果" == view["agent_outputs"][1]["details"][1]["title"]
 
 
 def test_build_demo_view_handles_missing_evidence():

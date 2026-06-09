@@ -76,6 +76,126 @@ def _build_step_output(role: str, result: dict) -> str:
     return "完成当前流程节点。"
 
 
+def _short_detail(text: str, limit: int = 220) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip("，。；、 ") + "..."
+
+
+def _build_retrieval_output(result: dict) -> dict:
+    hits = result.get("hybrid_hits", [])[:3]
+    details = []
+    for index, hit in enumerate(hits, start=1):
+        source = _format_source(hit.get("citation", {}))
+        details.append(
+            {
+                "title": f"证据 {index}：{hit.get('title') or '未命名证据'}",
+                "lines": [
+                    f"来源：{source}",
+                    f"hybrid_score：{hit.get('hybrid_score', '待计算')}",
+                    f"内容摘要：{_short_detail(hit.get('text', ''))}",
+                ],
+            }
+        )
+    if not details:
+        details.append(
+            {
+                "title": "未召回证据",
+                "lines": ["当前固定知识库没有匹配到足够证据。"],
+            }
+        )
+    return {
+        "agent": "检索智能体",
+        "status": _build_step_output("证据检索中枢", result),
+        "tone": "success" if hits else "warning",
+        "summary": "输出固定知识库中的候选证据，供后续生成与审查智能体使用。",
+        "expanded": True,
+        "details": details,
+    }
+
+
+def _build_generation_output(result: dict) -> dict:
+    provider_status = result.get("provider_status") or "template"
+    citation_count = len(result.get("citations_used", []))
+    details = [
+        {
+            "title": "生成配置",
+            "lines": [
+                f"模型/API 状态：{provider_status}",
+                f"引用来源数量：{citation_count}",
+            ],
+        },
+        {
+            "title": "回答生成结果",
+            "lines": [_short_detail(result.get("answer", ""), limit=520)],
+        },
+    ]
+    return {
+        "agent": "回答生成智能体",
+        "status": _build_step_output("生成智能体", result),
+        "tone": "success" if provider_status in {"success", "template"} else "warning",
+        "summary": "输出面向用户的可信回答，并保留 citation 引用依据。",
+        "expanded": True,
+        "details": details,
+    }
+
+
+def _build_source_review_output(result: dict) -> dict:
+    source_check = result.get("source_check", {})
+    status_text, tone = _present_status(source_check.get("status", ""))
+    issues = source_check.get("issues") or ["未发现明显溯源问题。"]
+    return {
+        "agent": "溯源审查智能体",
+        "status": status_text,
+        "tone": tone,
+        "summary": "核验回答是否具备 citation 支撑，检查来源字段是否完整。",
+        "expanded": False,
+        "details": [
+            {
+                "title": "溯源审查输出",
+                "lines": [
+                    f"checked_citation_count：{source_check.get('checked_citation_count', 0)}",
+                    *[f"问题/结论：{issue}" for issue in issues],
+                ],
+            }
+        ],
+    }
+
+
+def _build_policy_review_output(result: dict) -> dict:
+    policy_check = result.get("policy_check", {})
+    status_text, tone = _present_status(policy_check.get("status", ""))
+    issues = policy_check.get("issues") or ["未发现明显内容规范风险。"]
+    suggestion = policy_check.get("suggestion") or "暂无额外建议。"
+    return {
+        "agent": "内容规范审查智能体",
+        "status": status_text,
+        "tone": tone,
+        "summary": "对表达边界、证据边界和复核风险进行规则初筛。",
+        "expanded": False,
+        "details": [
+            {
+                "title": "内容规范初筛输出",
+                "lines": [
+                    f"risk_types：{', '.join(policy_check.get('risk_types', [])) or 'none'}",
+                    *[f"问题/结论：{issue}" for issue in issues],
+                    f"建议：{suggestion}",
+                ],
+            }
+        ],
+    }
+
+
+def _build_agent_outputs(result: dict) -> list[dict]:
+    return [
+        _build_retrieval_output(result),
+        _build_generation_output(result),
+        _build_source_review_output(result),
+        _build_policy_review_output(result),
+    ]
+
+
 def build_demo_view(result: dict) -> dict:
     stages = []
     agents = []
@@ -140,6 +260,7 @@ def build_demo_view(result: dict) -> dict:
         "stages": stages,
         "agents": agents,
         "execution_steps": execution_steps,
+        "agent_outputs": _build_agent_outputs(result),
         "evidence": evidence,
         "task_report": {
             "evidence_count": len(result.get("hybrid_hits", [])),

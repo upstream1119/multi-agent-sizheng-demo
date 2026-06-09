@@ -518,6 +518,17 @@ def build_live_execution_steps(active_index: int) -> list[dict]:
     return steps
 
 
+def render_agent_outputs(agent_outputs: list[dict]) -> None:
+    for item in agent_outputs:
+        label = f"{item['agent']} · {item['status']}"
+        with st.expander(label, expanded=item.get("expanded", False)):
+            st.markdown(f"**输出摘要：** {item['summary']}")
+            for detail in item.get("details", []):
+                st.markdown(f"**{detail['title']}**")
+                for line in detail.get("lines", []):
+                    st.markdown(f"- {line}")
+
+
 def render_task_report(report: dict) -> None:
     items = [
         ("召回证据", f'{report["evidence_count"]} 条'),
@@ -573,6 +584,13 @@ def render_result(view: dict) -> None:
         unsafe_allow_html=True,
     )
     render_execution_monitor(view["execution_steps"])
+
+    st.markdown('<div class="section-title">智能体单步输出</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">可展开查看每个智能体的独立输出，默认展示检索与生成结果。</div>',
+        unsafe_allow_html=True,
+    )
+    render_agent_outputs(view["agent_outputs"])
 
     st.markdown('<div class="section-title">任务完成报告</div>', unsafe_allow_html=True)
     render_task_report(view["task_report"])
