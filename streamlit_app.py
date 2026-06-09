@@ -19,6 +19,41 @@ EXAMPLE_QUESTIONS = [
     "抗日战争时期党的干部教育为什么重要？",
 ]
 
+LIVE_EXECUTION_TEMPLATE = [
+    {
+        "step": "01",
+        "agent": "检索智能体",
+        "task": "从固定知识库中召回相关证据。",
+        "tool": "固定知识库检索工具 + KG-RAG 混合召回",
+        "input": "用户问题、关键词实体、固定知识库",
+        "output": "等待检索结果",
+    },
+    {
+        "step": "02",
+        "agent": "回答生成智能体",
+        "task": "只依据已召回证据调用 GLM-4.5-Air 组织教学回答。",
+        "tool": "GLM-4.5-Air API / 本地兜底生成器",
+        "input": "用户问题、召回证据、citation 信息",
+        "output": "等待生成结果",
+    },
+    {
+        "step": "03",
+        "agent": "溯源审查智能体",
+        "task": "核验回答是否具备 citation 支撑。",
+        "tool": "Citation 规则核验器",
+        "input": "生成回答、citations_used",
+        "output": "等待审查结果",
+    },
+    {
+        "step": "04",
+        "agent": "内容规范审查智能体",
+        "task": "对表达边界和复核风险进行规则初筛。",
+        "tool": "内容规范规则初筛器",
+        "input": "生成回答、溯源审查结果",
+        "output": "等待初筛结果",
+    },
+]
+
 st.set_page_config(
     page_title="多智能体协同教学问答助手",
     page_icon="知",
@@ -266,6 +301,103 @@ st.markdown(
         font-weight: 650;
     }
 
+    .execution-panel {
+        display: grid;
+        gap: .8rem;
+        margin: .85rem 0 1.25rem;
+    }
+
+    .execution-step {
+        display: grid;
+        grid-template-columns: 4rem 1fr auto;
+        gap: .85rem;
+        align-items: start;
+        padding: 1rem 1.05rem;
+        border: 1px solid var(--line);
+        border-left: 5px solid rgba(140, 29, 40, .36);
+        border-radius: 15px;
+        background: rgba(255,255,255,.78);
+        box-shadow: 0 6px 18px rgba(73,45,32,.045);
+    }
+
+    .execution-step.running {
+        border-left-color: var(--gold);
+        background: rgba(255, 250, 238, .9);
+    }
+
+    .execution-step.success {
+        border-left-color: #4e8568;
+    }
+
+    .execution-step.warning {
+        border-left-color: #bd812e;
+    }
+
+    .execution-step.danger {
+        border-left-color: #a32b33;
+    }
+
+    .execution-index {
+        width: 3rem;
+        height: 3rem;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(140, 29, 40, .08);
+        color: var(--red-deep);
+        font-weight: 800;
+        letter-spacing: .04em;
+    }
+
+    .execution-agent {
+        color: var(--ink);
+        font-size: 1.02rem;
+        font-weight: 760;
+    }
+
+    .execution-task {
+        margin-top: .25rem;
+        color: var(--muted);
+        line-height: 1.65;
+    }
+
+    .execution-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .55rem;
+        margin-top: .75rem;
+    }
+
+    .execution-chip {
+        padding: .55rem .65rem;
+        border: 1px solid rgba(140, 29, 40, .12);
+        border-radius: 11px;
+        background: rgba(255,255,255,.66);
+    }
+
+    .execution-chip-label {
+        margin-bottom: .18rem;
+        color: var(--red-deep);
+        font-size: .76rem;
+        font-weight: 760;
+    }
+
+    .execution-chip-value {
+        color: var(--muted);
+        font-size: .86rem;
+        line-height: 1.55;
+    }
+
+    .execution-status {
+        min-width: 5rem;
+        padding: .32rem .55rem;
+        border-radius: 999px;
+        background: rgba(140, 29, 40, .07);
+        text-align: center;
+        font-size: .84rem;
+        font-weight: 760;
+    }
+
     .success { color: #357052; }
     .warning { color: #9a641c; }
     .danger { color: #a32b33; }
@@ -303,6 +435,8 @@ st.markdown(
         .agent-grid,
         .stage-grid,
         .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .execution-step { grid-template-columns: 1fr; }
+        .execution-meta { grid-template-columns: 1fr; }
     }
     </style>
     """,
@@ -335,6 +469,53 @@ def render_agent_workbench(agents: list[dict]) -> None:
         for agent in agents
     )
     st.markdown(f'<div class="agent-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_execution_monitor(steps: list[dict]) -> None:
+    cards = []
+    for step in steps:
+        tone = html.escape(step.get("tone", "neutral"))
+        cards.append(
+            (
+                f'<div class="execution-step {tone}">'
+                f'<div class="execution-index">{html.escape(step["step"])}</div>'
+                f'<div>'
+                f'<div class="execution-agent">{html.escape(step["agent"])}</div>'
+                f'<div class="execution-task">{html.escape(step["task"])}</div>'
+                f'<div class="execution-meta">'
+                f'<div class="execution-chip"><div class="execution-chip-label">调用工具</div>'
+                f'<div class="execution-chip-value">{html.escape(step["tool"])}</div></div>'
+                f'<div class="execution-chip"><div class="execution-chip-label">输入</div>'
+                f'<div class="execution-chip-value">{html.escape(step["input"])}</div></div>'
+                f'<div class="execution-chip"><div class="execution-chip-label">输出</div>'
+                f'<div class="execution-chip-value">{html.escape(step["output"])}</div></div>'
+                f'</div>'
+                f'</div>'
+                f'<div class="execution-status {tone}">{html.escape(step["status"])}</div>'
+                f'</div>'
+            )
+        )
+    st.markdown(f'<div class="execution-panel">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
+def build_live_execution_steps(active_index: int) -> list[dict]:
+    steps = []
+    for index, item in enumerate(LIVE_EXECUTION_TEMPLATE):
+        if index < active_index:
+            status, tone, output = "已完成", "success", "已完成当前节点"
+        elif index == active_index:
+            status, tone, output = "运行中", "running", "正在处理"
+        else:
+            status, tone, output = "等待中", "neutral", item["output"]
+        steps.append(
+            {
+                **item,
+                "output": output,
+                "status": status,
+                "tone": tone,
+            }
+        )
+    return steps
 
 
 def render_task_report(report: dict) -> None:
@@ -385,6 +566,13 @@ def render_result(view: dict) -> None:
     )
     render_agent_workbench(view["agents"])
     render_controlled_flow()
+
+    st.markdown('<div class="section-title">多智能体执行记录</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">每个节点展示本次调用的智能体、工具、输入、输出与最终状态。</div>',
+        unsafe_allow_html=True,
+    )
+    render_execution_monitor(view["execution_steps"])
 
     st.markdown('<div class="section-title">任务完成报告</div>', unsafe_allow_html=True)
     render_task_report(view["task_report"])
@@ -473,15 +661,15 @@ if selected_question or analyze:
         st.warning("请先输入一个问题。")
     else:
         with st.status("正在执行受控多智能体任务流...", expanded=True) as status:
-            st.write("1. 检索智能体：正在从固定知识库召回相关证据。")
-            time.sleep(0.25)
-            st.write("2. 回答生成智能体：正在基于证据调用 GLM-4.5-Air 生成回答。")
-            time.sleep(0.25)
-            st.write("3. 溯源审查智能体：正在核验回答是否具备 citation 支撑。")
-            time.sleep(0.25)
-            st.write("4. 内容规范审查智能体：正在进行规则初筛并形成任务报告。")
+            live_panel = st.empty()
+            for active_index in range(len(LIVE_EXECUTION_TEMPLATE)):
+                with live_panel.container():
+                    render_execution_monitor(build_live_execution_steps(active_index))
+                time.sleep(0.35)
             st.session_state["result"] = build_demo_view(retrieve(active_question))
             st.session_state["last_question"] = active_question
+            with live_panel.container():
+                render_execution_monitor(st.session_state["result"]["execution_steps"])
             provider_status = st.session_state["result"].get("provider_status")
             if provider_status and provider_status != "success":
                 st.write(f"提示：生成 API 状态为 {provider_status}，系统已启用本地兜底回答。")

@@ -45,6 +45,13 @@ def test_build_demo_view_formats_successful_result():
     assert view["task_report"]["source_status"] == "已完成"
     assert view["task_report"]["policy_status"] == "已完成"
     assert view["decision"]["label"] == "可展示"
+    assert len(view["execution_steps"]) == 4
+    assert view["execution_steps"][0]["agent"] == "检索智能体"
+    assert view["execution_steps"][0]["tool"] == "固定知识库检索工具 + KG-RAG 混合召回"
+    assert view["execution_steps"][0]["output"] == "召回 1 条候选证据。"
+    assert view["execution_steps"][1]["agent"] == "回答生成智能体"
+    assert view["execution_steps"][1]["tool"] == "GLM-4.5-Air API / 本地兜底生成器"
+    assert view["execution_steps"][2]["output"] == "完成 0 条 citation 核验。"
 
 
 def test_build_demo_view_handles_missing_evidence():
