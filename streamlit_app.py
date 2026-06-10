@@ -702,6 +702,50 @@ def render_system_note() -> None:
         )
 
 
+def ensure_view_defaults(view: dict) -> dict:
+    view = dict(view or {})
+    task_report = view.get("task_report", {})
+    decision = view.get(
+        "decision",
+        {"label": "待确认", "tone": "neutral", "reason": "系统尚未形成最终结论。"},
+    )
+    view.setdefault("answer", "当前未形成回答。")
+    view.setdefault("decision", decision)
+    view.setdefault("agents", [])
+    view.setdefault("execution_steps", [])
+    view.setdefault("agent_outputs", [])
+    view.setdefault("work_logs", [])
+    view.setdefault("evidence", [])
+    view.setdefault(
+        "task_report",
+        {
+            "evidence_count": 0,
+            "citation_count": 0,
+            "source_status": "待确认",
+            "policy_status": "待确认",
+        },
+    )
+    view.setdefault(
+        "evidence_chain",
+        [item.get("source", "") for item in view["evidence"] if item.get("source")],
+    )
+    view.setdefault(
+        "final_report",
+        {
+            "question": st.session_state.get("last_question", "当前问题待确认"),
+            "mode": "固定知识库 + KG-RAG 检索 + GLM-4.5-Air/本地兜底 + 规则审查",
+            "generation_mode": "GLM-4.5-Air/本地兜底",
+            "evidence_count": task_report.get("evidence_count", 0),
+            "citation_count": task_report.get("citation_count", 0),
+            "source_status": task_report.get("source_status", "待确认"),
+            "policy_status": task_report.get("policy_status", "待确认"),
+            "decision": decision.get("label", "待确认"),
+            "recommendation": "可作为阶段性教学辅助回答展示，建议保留证据边界说明。",
+        },
+    )
+    return view
+
+
 def render_agent_workbench(agents: list[dict]) -> None:
     cards = "".join(
         (
@@ -815,6 +859,7 @@ def render_controlled_flow() -> None:
 
 
 def render_result(view: dict) -> None:
+    view = ensure_view_defaults(view)
     decision = view["decision"]
     answer_html = html.escape(view["answer"]).replace("\n", "<br>")
 
@@ -947,6 +992,7 @@ if selected_question or analyze:
                 time.sleep(0.35)
             st.session_state["result"] = build_demo_view(retrieve(active_question))
             st.session_state["last_question"] = active_question
+            st.session_state["result"] = ensure_view_defaults(st.session_state["result"])
             with live_panel.container():
                 render_execution_monitor(st.session_state["result"]["execution_steps"])
             provider_status = st.session_state["result"].get("provider_status")
@@ -955,7 +1001,7 @@ if selected_question or analyze:
             status.update(label="多智能体任务流执行完成", state="complete")
 
 if "result" in st.session_state:
-    st.caption(f"本次问题：{st.session_state['last_question']}")
+    st.caption(f"本次问题：{st.session_state.get('last_question', '当前问题待确认')}")
     render_result(st.session_state["result"])
 
 st.markdown(
