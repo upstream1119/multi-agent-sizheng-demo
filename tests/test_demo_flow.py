@@ -71,6 +71,31 @@ def test_baseline_answer_retries_once_after_provider_failure(monkeypatch):
     assert result["answer"]
 
 
+def test_retrieve_reports_workflow_progress_in_order(monkeypatch):
+    events = []
+    monkeypatch.setenv("DACHUANG_RETRIEVE_MODE", "mock")
+    monkeypatch.setenv("DACHUANG_LOCAL_MOCK_ACK", "1")
+    monkeypatch.setenv("DACHUANG_GENERATOR_MODE", "template")
+
+    result = retrieve(
+        "三湾改编对人民军队建设有什么意义？",
+        progress_callback=lambda stage, status: events.append((stage, status)),
+    )
+
+    assert result["status"] == "success"
+    assert events == [
+        ("retrieval", "running"),
+        ("retrieval", "completed"),
+        ("generation", "running"),
+        ("generation", "completed"),
+        ("source_review", "running"),
+        ("source_review", "completed"),
+        ("content_review", "running"),
+        ("content_review", "completed"),
+        ("final_answer", "completed"),
+    ]
+
+
 @pytest.mark.parametrize(
     ("question", "expected_top_hit"),
     [

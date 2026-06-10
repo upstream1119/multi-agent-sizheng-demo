@@ -350,7 +350,7 @@ def _build_response(
     }
 
 
-def retrieve(query: str) -> dict:
+def retrieve(query: str, progress_callback=None) -> dict:
     """
     大组长总控台：混合检索的总编排器。
     不管底层逻辑以后怎么换，这里的 5 步固定流程（实体->向量->图谱->融合->组装）作为工程契约，绝对不能破！
@@ -358,6 +358,8 @@ def retrieve(query: str) -> dict:
     query_text = (query or "").strip()
     mode = _resolve_mode()
 
+    if progress_callback:
+        progress_callback("retrieval", "running")
     if mode == MOCK_MODE:
         # 标准双路召回流水线：
         knowledge_base = _load_demo_knowledge_base()
@@ -368,7 +370,11 @@ def retrieve(query: str) -> dict:
     else:
         query_entities = []
         vector_hits, graph_hits, hybrid_hits = [], [], []
+    if progress_callback:
+        progress_callback("retrieval", "completed")
 
+    if progress_callback:
+        progress_callback("generation", "running")
     with ThreadPoolExecutor(max_workers=2) as executor:
         baseline_future = executor.submit(generate_baseline_answer, query_text)
         generated_future = executor.submit(generate_answer, query_text, hybrid_hits)
@@ -376,15 +382,27 @@ def retrieve(query: str) -> dict:
         generated = generated_future.result()
     if baseline.get("provider_status") != "success":
         baseline = generate_baseline_answer(query_text)
+    if progress_callback:
+        progress_callback("generation", "completed")
+
+    if progress_callback:
+        progress_callback("source_review", "running")
     source_check = check_answer_sources(
         generated["answer"],
         generated["citations_used"],
     )
+    if progress_callback:
+        progress_callback("source_review", "completed")
+
+    if progress_callback:
+        progress_callback("content_review", "running")
     policy_check = check_policy_risk(
         generated["answer"],
         generated["citations_used"],
         source_check,
     )
+    if progress_callback:
+        progress_callback("content_review", "completed")
     agent_trace = build_agent_trace(
         query_entities=query_entities,
         hybrid_hits=hybrid_hits,
@@ -393,6 +411,8 @@ def retrieve(query: str) -> dict:
         policy_check=policy_check,
     )
     final_decision = build_final_decision(source_check, policy_check)
+    if progress_callback:
+        progress_callback("final_answer", "completed")
 
     return _build_response(
         query=query_text,

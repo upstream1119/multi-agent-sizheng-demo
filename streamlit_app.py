@@ -1,5 +1,6 @@
 import html
 import os
+import time
 
 import streamlit as st
 
@@ -69,6 +70,14 @@ LIVE_EXECUTION_TEMPLATE = [
         "input": "生成回答、溯源审查结果",
         "output": "等待初筛结果",
     },
+]
+
+WORKFLOW_STAGES = [
+    ("retrieval", "检索资料"),
+    ("generation", "生成回答"),
+    ("source_review", "核验来源"),
+    ("content_review", "内容复核"),
+    ("final_answer", "可信回答"),
 ]
 
 st.set_page_config(
@@ -600,7 +609,7 @@ st.markdown(
     .flow-strip {
         display: flex;
         flex-wrap: wrap;
-        gap: .5rem;
+        gap: .65rem;
         align-items: center;
         margin: .85rem 0 1.15rem;
         color: var(--muted);
@@ -608,12 +617,62 @@ st.markdown(
     }
 
     .flow-node {
-        padding: .4rem .65rem;
+        display: inline-flex;
+        gap: .45rem;
+        align-items: center;
+        padding: .52rem .72rem;
         border: 1px solid rgba(140, 29, 40, .16);
         border-radius: 999px;
         background: rgba(255,255,255,.68);
-        color: var(--red-deep);
+        color: var(--muted);
         font-weight: 650;
+        transition: all .2s ease;
+    }
+
+    .flow-node.running {
+        border-color: rgba(183, 139, 66, .72);
+        background: #fff1bd;
+        color: #765414;
+        box-shadow: 0 0 0 4px rgba(183, 139, 66, .12);
+        animation: workflow-pulse 1.25s ease-in-out infinite;
+    }
+
+    .flow-node.completed {
+        border-color: rgba(78, 133, 104, .4);
+        background: #e5f2e9;
+        color: #2f694b;
+    }
+
+    .flow-node.failed {
+        border-color: rgba(163, 43, 51, .38);
+        background: #f9e5e6;
+        color: #8b2028;
+    }
+
+    .flow-dot {
+        width: .55rem;
+        height: .55rem;
+        border-radius: 999px;
+        background: #b9b1ac;
+    }
+
+    .flow-node.running .flow-dot { background: #c58b20; }
+    .flow-node.completed .flow-dot { background: #4e8568; }
+    .flow-node.failed .flow-dot { background: #a32b33; }
+
+    .flow-status {
+        font-size: .76rem;
+        opacity: .82;
+    }
+
+    .flow-arrow {
+        color: rgba(101, 21, 29, .35);
+        font-weight: 800;
+    }
+
+    @keyframes workflow-pulse {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-2px); }
     }
 
     .execution-panel {
@@ -1155,23 +1214,29 @@ def render_task_report(report: dict) -> None:
     st.markdown(f'<div class="report-grid">{cards}</div>', unsafe_allow_html=True)
 
 
-def render_controlled_flow() -> None:
-    st.markdown(
-        """
-        <div class="flow-strip">
-            <span class="flow-node">用户任务</span>
-            <span>→</span>
-            <span class="flow-node">检索智能体</span>
-            <span>→</span>
-            <span class="flow-node">回答生成智能体</span>
-            <span>→</span>
-            <span class="flow-node">溯源审查智能体</span>
-            <span>→</span>
-            <span class="flow-node">内容规范审查智能体</span>
-            <span>→</span>
-            <span class="flow-node">可信回答</span>
-        </div>
-        """,
+def render_controlled_flow(target, states: dict[str, str]) -> None:
+    status_labels = {
+        "waiting": "等待",
+        "running": "进行中",
+        "completed": "已完成",
+        "failed": "需复核",
+    }
+    nodes = []
+    for index, (stage, label) in enumerate(WORKFLOW_STAGES):
+        state = states.get(stage, "waiting")
+        if index:
+            nodes.append('<span class="flow-arrow">→</span>')
+        nodes.append(
+            (
+                f'<span class="flow-node {html.escape(state)}">'
+                '<span class="flow-dot"></span>'
+                f'<span>{html.escape(label)}</span>'
+                f'<span class="flow-status">{status_labels.get(state, "等待")}</span>'
+                "</span>"
+            )
+        )
+    target.markdown(
+        f'<div class="flow-strip">{"".join(nodes)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -1189,9 +1254,6 @@ def render_result(view: dict) -> None:
         render_comparison_card(view["comparison"]["baseline"], "baseline")
     with trusted_column:
         render_comparison_card(view["comparison"]["trusted"], "trusted")
-
-    st.markdown('<div class="section-title">多智能体协作流程</div>', unsafe_allow_html=True)
-    render_controlled_flow()
 
     st.markdown('<div class="section-title">知识增强回答的可信依据</div>', unsafe_allow_html=True)
     render_benefits()
@@ -1249,6 +1311,18 @@ for column, scenario in zip(example_columns, SCENARIO_EXAMPLES):
 if "question" not in st.session_state:
     st.session_state["question"] = EXAMPLE_QUESTIONS[0]
 
+st.markdown('<div class="section-title">多智能体协作流程</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="section-note">提交问题后，各智能体将按顺序协作完成任务。</div>',
+    unsafe_allow_html=True,
+)
+workflow_placeholder = st.empty()
+initial_workflow_states = st.session_state.get(
+    "workflow_states",
+    {stage: "waiting" for stage, _ in WORKFLOW_STAGES},
+)
+render_controlled_flow(workflow_placeholder, initial_workflow_states)
+
 st.markdown('<div class="section-title">自由提问</div>', unsafe_allow_html=True)
 question = st.text_area(
     "请输入与中国共产党思想政治教育史相关的问题",
@@ -1263,11 +1337,31 @@ if selected_question or analyze:
     if not active_question:
         st.warning("请先输入一个问题。")
     else:
+        workflow_states = {stage: "waiting" for stage, _ in WORKFLOW_STAGES}
+
+        def update_workflow(stage: str, stage_status: str) -> None:
+            workflow_states[stage] = stage_status
+            render_controlled_flow(workflow_placeholder, workflow_states)
+            if stage_status == "running":
+                time.sleep(0.12)
+
         with st.status("正在生成两种回答...", expanded=True) as status:
             st.write("正在生成普通大模型回答...")
             st.write("正在查找相关资料并生成资料增强回答...")
             st.write("正在整理出处并检查回答...")
-            st.session_state["result"] = build_demo_view(retrieve(active_question))
+            raw_result = retrieve(
+                active_question,
+                progress_callback=update_workflow,
+            )
+            if raw_result.get("source_check", {}).get("status") != "pass":
+                workflow_states["source_review"] = "failed"
+            if raw_result.get("policy_check", {}).get("status") != "pass":
+                workflow_states["content_review"] = "failed"
+            if raw_result.get("final_decision", {}).get("status") != "approved":
+                workflow_states["final_answer"] = "failed"
+            render_controlled_flow(workflow_placeholder, workflow_states)
+            st.session_state["workflow_states"] = dict(workflow_states)
+            st.session_state["result"] = build_demo_view(raw_result)
             st.session_state["last_question"] = active_question
             st.session_state["result"] = ensure_view_defaults(st.session_state["result"])
             status.update(label="两种回答已生成", state="complete", expanded=False)
