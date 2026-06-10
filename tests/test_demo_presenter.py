@@ -4,6 +4,8 @@ from demo_presenter import build_demo_view
 def test_build_demo_view_formats_successful_result():
     result = {
         "answer": "基于证据形成的回答。",
+        "baseline_answer": "普通大模型直接回答。",
+        "baseline_provider_status": "success",
         "query": "延安时期思想政治教育有什么特点？",
         "hybrid_hits": [
             {
@@ -74,6 +76,10 @@ def test_build_demo_view_formats_successful_result():
     assert view["final_report"]["evidence_count"] == 1
     assert view["final_report"]["citation_count"] == 0
     assert view["final_report"]["decision"] == "可展示"
+    assert view["comparison"]["baseline"]["answer"] == "普通大模型直接回答。"
+    assert view["comparison"]["baseline"]["capabilities"][0] == ("知识库证据", "未提供")
+    assert view["comparison"]["trusted"]["answer"] == "基于证据形成的回答。"
+    assert view["comparison"]["trusted"]["capabilities"][0] == ("知识库证据", "1 条")
 
 
 def test_build_demo_view_handles_missing_evidence():

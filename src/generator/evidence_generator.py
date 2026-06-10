@@ -48,6 +48,27 @@ def build_evidence_prompt(query: str, hybrid_hits: list[dict], max_hits: int = 3
     )
 
 
+def generate_baseline_answer(query: str) -> dict:
+    prompt = (
+        "你是一个普通通用大模型，请直接回答用户问题。\n"
+        "本次回答不提供外部知识库证据，不进行引用溯源或内容规范审查。\n"
+        "不要声称使用了未提供的文献、引用或页码。\n"
+        "请用自然、简洁的中文回答。\n\n"
+        f"问题：{query}"
+    )
+    provider_name = os.getenv("DACHUANG_LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower()
+    provider = get_llm_provider(provider_name)
+    provider_result = provider.generate(prompt)
+    answer = provider_result.text.strip()
+    if provider_result.status != "success" or not answer:
+        answer = "普通大模型回答暂时不可用，请稍后重试。"
+    return {
+        "answer": answer,
+        "provider": provider_result.provider_name,
+        "provider_status": provider_result.status,
+    }
+
+
 def generate_answer(query: str, hybrid_hits: list[dict]) -> dict:
     mode = _resolve_generator_mode()
     if mode == LLM_MODE:

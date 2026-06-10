@@ -33,4 +33,5 @@ def test_ensure_view_defaults_handles_legacy_session_view():
     assert view["work_logs"] == []
     assert view["agent_outputs"] == []
     assert view["execution_steps"] == []
-
+    assert view["comparison"]["baseline"]["status"] == "等待生成"
+    assert view["comparison"]["trusted"]["answer"] == "旧 session 中缓存的回答。"

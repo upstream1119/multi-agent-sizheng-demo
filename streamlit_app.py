@@ -370,6 +370,78 @@ st.markdown(
         line-height: 1.9;
     }
 
+    .comparison-card {
+        height: 100%;
+        padding: 1.15rem 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255,255,255,.82);
+        box-shadow: 0 10px 28px rgba(73,45,32,.055);
+    }
+
+    .comparison-card.trusted {
+        border-top: 5px solid #4e8568;
+    }
+
+    .comparison-card.baseline {
+        border-top: 5px solid #9b918b;
+    }
+
+    .comparison-head {
+        display: flex;
+        justify-content: space-between;
+        gap: .7rem;
+        align-items: center;
+        margin-bottom: .85rem;
+    }
+
+    .comparison-title {
+        color: var(--red-deep);
+        font-size: 1.12rem;
+        font-weight: 780;
+    }
+
+    .comparison-status {
+        padding: .28rem .55rem;
+        border-radius: 999px;
+        background: rgba(140, 29, 40, .07);
+        font-size: .8rem;
+        font-weight: 700;
+    }
+
+    .comparison-answer {
+        min-height: 11rem;
+        color: var(--ink);
+        line-height: 1.85;
+    }
+
+    .capability-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .55rem;
+        margin-top: 1rem;
+    }
+
+    .capability-item {
+        padding: .6rem .7rem;
+        border: 1px solid rgba(140, 29, 40, .1);
+        border-radius: 11px;
+        background: rgba(250,247,240,.72);
+    }
+
+    .capability-label {
+        color: var(--muted);
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .capability-value {
+        margin-top: .2rem;
+        color: var(--ink);
+        font-size: .9rem;
+        font-weight: 720;
+    }
+
     .agent-grid,
     .stage-grid,
     .report-grid {
@@ -588,6 +660,7 @@ st.markdown(
         .work-log-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .execution-step { grid-template-columns: 1fr; }
         .execution-meta { grid-template-columns: 1fr; }
+        .capability-grid { grid-template-columns: 1fr; }
     }
     </style>
     """,
@@ -625,6 +698,33 @@ def render_demo_console(report: dict) -> None:
         for label, value in items
     )
     st.markdown(f'<div class="console-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_comparison_card(item: dict, card_type: str) -> None:
+    capabilities = "".join(
+        (
+            '<div class="capability-item">'
+            f'<div class="capability-label">{html.escape(label)}</div>'
+            f'<div class="capability-value">{html.escape(value)}</div>'
+            "</div>"
+        )
+        for label, value in item.get("capabilities", [])
+    )
+    answer_html = html.escape(item.get("answer", "")).replace("\n", "<br>")
+    st.markdown(
+        (
+            f'<div class="comparison-card {html.escape(card_type)}">'
+            '<div class="comparison-head">'
+            f'<div class="comparison-title">{html.escape(item["title"])}</div>'
+            f'<div class="comparison-status {html.escape(item.get("tone", "neutral"))}">'
+            f'{html.escape(item["status"])}</div>'
+            "</div>"
+            f'<div class="comparison-answer">{answer_html}</div>'
+            f'<div class="capability-grid">{capabilities}</div>'
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 def render_evidence_chain(chain: list[str]) -> None:
@@ -741,6 +841,35 @@ def ensure_view_defaults(view: dict) -> dict:
             "policy_status": task_report.get("policy_status", "待确认"),
             "decision": decision.get("label", "待确认"),
             "recommendation": "可作为阶段性教学辅助回答展示，建议保留证据边界说明。",
+        },
+    )
+    view.setdefault(
+        "comparison",
+        {
+            "baseline": {
+                "title": "普通大模型回答",
+                "answer": "请重新提交问题以生成普通大模型对比回答。",
+                "status": "等待生成",
+                "tone": "neutral",
+                "capabilities": [
+                    ("知识库证据", "未提供"),
+                    ("来源与页码", "未提供"),
+                    ("溯源审查", "未执行"),
+                    ("内容规范初筛", "未执行"),
+                ],
+            },
+            "trusted": {
+                "title": "可信多智能体回答",
+                "answer": view["answer"],
+                "status": "任务完成",
+                "tone": "success",
+                "capabilities": [
+                    ("知识库证据", f'{view["task_report"].get("evidence_count", 0)} 条'),
+                    ("来源与页码", f'{view["task_report"].get("citation_count", 0)} 条引用'),
+                    ("溯源审查", view["task_report"].get("source_status", "待确认")),
+                    ("内容规范初筛", view["task_report"].get("policy_status", "待确认")),
+                ],
+            },
         },
     )
     return view
@@ -861,20 +990,25 @@ def render_controlled_flow() -> None:
 def render_result(view: dict) -> None:
     view = ensure_view_defaults(view)
     decision = view["decision"]
-    answer_html = html.escape(view["answer"]).replace("\n", "<br>")
 
     st.markdown('<div class="section-title">演示总控台</div>', unsafe_allow_html=True)
     render_demo_console(view["final_report"])
 
-    answer_column, side_column = st.columns([1.8, 1], gap="large")
-    with answer_column:
-        st.markdown('<div class="section-title">可信回答</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="answer-card">{answer_html}</div>', unsafe_allow_html=True)
-        render_evidence_chain(view["evidence_chain"])
+    st.markdown('<div class="section-title">回答效果对比</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">使用同一问题，对比普通大模型直答与可信多智能体流程的输出差异。</div>',
+        unsafe_allow_html=True,
+    )
+    baseline_column, trusted_column = st.columns(2, gap="large")
+    with baseline_column:
+        render_comparison_card(view["comparison"]["baseline"], "baseline")
+    with trusted_column:
+        render_comparison_card(view["comparison"]["trusted"], "trusted")
 
-    with side_column:
-        st.markdown('<div class="section-title">最终任务报告</div>', unsafe_allow_html=True)
-        render_final_report(view["final_report"])
+    evidence_column, report_column = st.columns([1.25, 1], gap="large")
+    with evidence_column:
+        st.markdown('<div class="section-title">可信依据</div>', unsafe_allow_html=True)
+        render_evidence_chain(view["evidence_chain"])
         st.markdown('<div class="section-title">审查结论</div>', unsafe_allow_html=True)
         st.markdown(
             (
@@ -886,40 +1020,36 @@ def render_result(view: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown('<div class="section-title">多智能体执行总览</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-note">系统采用受控流程式多智能体协同：每个智能体只负责固定环节，按顺序完成任务。</div>',
-        unsafe_allow_html=True,
-    )
-    render_agent_workbench(view["agents"])
-    render_controlled_flow()
-    render_work_logs(view["work_logs"])
+    with report_column:
+        st.markdown('<div class="section-title">最终任务报告</div>', unsafe_allow_html=True)
+        render_final_report(view["final_report"])
 
-    detail_column, output_column = st.columns([1.25, 1], gap="large")
-    with detail_column:
-        st.markdown('<div class="section-title">执行记录</div>', unsafe_allow_html=True)
+    with st.expander("查看多智能体处理过程与技术详情", expanded=False):
+        st.markdown('<div class="section-title">多智能体执行总览</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="section-note">展示每个节点调用的智能体、工具、输入、输出与最终状态。</div>',
+            '<div class="section-note">以下内容用于说明系统内部的角色分工、执行过程和各智能体输出。</div>',
             unsafe_allow_html=True,
         )
-        render_execution_monitor(view["execution_steps"])
+        render_agent_workbench(view["agents"])
+        render_controlled_flow()
+        render_work_logs(view["work_logs"])
 
-    with output_column:
-        st.markdown('<div class="section-title">单步输出</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-note">可展开查看每个智能体的独立输出。</div>',
-            unsafe_allow_html=True,
-        )
-        render_agent_outputs(view["agent_outputs"])
+        detail_column, output_column = st.columns([1.25, 1], gap="large")
+        with detail_column:
+            st.markdown('<div class="section-title">执行记录</div>', unsafe_allow_html=True)
+            render_execution_monitor(view["execution_steps"])
+        with output_column:
+            st.markdown('<div class="section-title">单步输出</div>', unsafe_allow_html=True)
+            render_agent_outputs(view["agent_outputs"])
 
-    st.markdown('<div class="section-title">参考依据</div>', unsafe_allow_html=True)
-    if view["evidence"]:
-        for index, evidence in enumerate(view["evidence"], start=1):
-            with st.expander(f"证据 {index} · {evidence['title']}", expanded=index == 1):
-                st.markdown(evidence["text"])
-                st.caption(evidence["source"])
-    else:
-        st.info("当前固定知识库中没有检索到足够证据，请尝试示例问题或调整提问。")
+        st.markdown('<div class="section-title">完整参考依据</div>', unsafe_allow_html=True)
+        if view["evidence"]:
+            for index, evidence in enumerate(view["evidence"], start=1):
+                with st.expander(f"证据 {index} · {evidence['title']}", expanded=False):
+                    st.markdown(evidence["text"])
+                    st.caption(evidence["source"])
+        else:
+            st.info("当前固定知识库中没有检索到足够证据，请尝试示例问题或调整提问。")
 
 
 st.markdown(

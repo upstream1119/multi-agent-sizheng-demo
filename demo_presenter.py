@@ -277,6 +277,38 @@ def _build_final_report(result: dict, decision: dict, source_label: str, policy_
     }
 
 
+def _build_comparison(result: dict, source_label: str, policy_label: str) -> dict:
+    baseline_status = result.get("baseline_provider_status") or "not_started"
+    baseline_answer = result.get("baseline_answer") or "普通大模型回答暂时不可用，请稍后重试。"
+    trusted_answer = result.get("answer") or "当前未形成可信回答。"
+    return {
+        "baseline": {
+            "title": "普通大模型回答",
+            "answer": baseline_answer,
+            "status": "生成完成" if baseline_status == "success" else "接口暂不可用",
+            "tone": "neutral" if baseline_status == "success" else "warning",
+            "capabilities": [
+                ("知识库证据", "未提供"),
+                ("来源与页码", "未提供"),
+                ("溯源审查", "未执行"),
+                ("内容规范初筛", "未执行"),
+            ],
+        },
+        "trusted": {
+            "title": "可信多智能体回答",
+            "answer": trusted_answer,
+            "status": "任务完成",
+            "tone": "success",
+            "capabilities": [
+                ("知识库证据", f"{len(result.get('hybrid_hits', []))} 条"),
+                ("来源与页码", f"{len(result.get('citations_used', []))} 条引用"),
+                ("溯源审查", source_label),
+                ("内容规范初筛", policy_label),
+            ],
+        },
+    }
+
+
 def build_demo_view(result: dict) -> dict:
     stages = []
     agents = []
@@ -350,6 +382,7 @@ def build_demo_view(result: dict) -> dict:
         "work_logs": _build_work_logs(result),
         "evidence_chain": _build_evidence_chain(result),
         "final_report": _build_final_report(result, final_decision, source_label, policy_label),
+        "comparison": _build_comparison(result, source_label, policy_label),
         "evidence": evidence,
         "task_report": {
             "evidence_count": len(result.get("hybrid_hits", [])),

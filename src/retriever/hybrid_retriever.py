@@ -1,10 +1,11 @@
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
 from src.agents.agent_trace import build_agent_trace, build_final_decision
-from src.generator.evidence_generator import generate_answer
+from src.generator.evidence_generator import generate_answer, generate_baseline_answer
 from src.graph.graph_store import (
     build_adjacency,
     build_relation_lookup,
@@ -290,12 +291,18 @@ def _build_response(
     graph_hits: list[dict],
     hybrid_hits: list[dict],
     generated: dict | None = None,
+    baseline: dict | None = None,
     source_check: dict | None = None,
     policy_check: dict | None = None,
     agent_trace: list[dict] | None = None,
     final_decision: dict | None = None,
 ) -> dict:
     generated = generated or {"answer": "", "citations_used": []}
+    baseline = baseline or {
+        "answer": "普通大模型回答暂时不可用，请稍后重试。",
+        "provider": "",
+        "provider_status": "not_started",
+    }
     source_check = source_check or {
         "status": "no_evidence",
         "issues": [],
@@ -330,6 +337,9 @@ def _build_response(
         "hybrid_hits": hybrid_hits,
         "answer": generated["answer"],
         "citations_used": generated["citations_used"],
+        "baseline_answer": baseline["answer"],
+        "baseline_provider": baseline.get("provider"),
+        "baseline_provider_status": baseline.get("provider_status"),
         "generator_mode": generated.get("generator_mode"),
         "generator_provider": generated.get("generator_provider"),
         "provider_status": generated.get("provider_status"),
@@ -359,7 +369,11 @@ def retrieve(query: str) -> dict:
         query_entities = []
         vector_hits, graph_hits, hybrid_hits = [], [], []
 
-    generated = generate_answer(query_text, hybrid_hits)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        baseline_future = executor.submit(generate_baseline_answer, query_text)
+        generated_future = executor.submit(generate_answer, query_text, hybrid_hits)
+        baseline = baseline_future.result()
+        generated = generated_future.result()
     source_check = check_answer_sources(
         generated["answer"],
         generated["citations_used"],
@@ -385,6 +399,7 @@ def retrieve(query: str) -> dict:
         graph_hits=graph_hits,
         hybrid_hits=hybrid_hits,
         generated=generated,
+        baseline=baseline,
         source_check=source_check,
         policy_check=policy_check,
         agent_trace=agent_trace,
