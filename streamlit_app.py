@@ -19,6 +19,24 @@ EXAMPLE_QUESTIONS = [
     "抗日战争时期党的干部教育为什么重要？",
 ]
 
+SCENARIO_EXAMPLES = [
+    {
+        "label": "概念解释",
+        "question": EXAMPLE_QUESTIONS[0],
+        "desc": "解释核心概念，适合展示系统如何形成教学化回答。",
+    },
+    {
+        "label": "历史事件分析",
+        "question": EXAMPLE_QUESTIONS[1],
+        "desc": "围绕具体历史事件，展示检索、生成与溯源链路。",
+    },
+    {
+        "label": "教育实践总结",
+        "question": EXAMPLE_QUESTIONS[2],
+        "desc": "总结教育实践经验，展示审查与复核提示能力。",
+    },
+]
+
 LIVE_EXECUTION_TEMPLATE = [
     {
         "step": "01",
@@ -169,6 +187,137 @@ st.markdown(
         color: var(--red-deep);
         font-size: .88rem;
         font-weight: 650;
+    }
+
+    .scenario-card,
+    .console-card,
+    .final-report-card,
+    .work-log-card,
+    .evidence-chain {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255,255,255,.78);
+        box-shadow: 0 8px 22px rgba(73,45,32,.045);
+    }
+
+    .scenario-card {
+        min-height: 7.2rem;
+        margin-bottom: .65rem;
+        padding: 1rem;
+    }
+
+    .scenario-label {
+        color: var(--red-deep);
+        font-size: .92rem;
+        font-weight: 780;
+    }
+
+    .scenario-question {
+        margin-top: .35rem;
+        color: var(--ink);
+        font-weight: 700;
+        line-height: 1.55;
+    }
+
+    .scenario-desc {
+        margin-top: .45rem;
+        color: var(--muted);
+        font-size: .84rem;
+        line-height: 1.55;
+    }
+
+    .console-grid,
+    .work-log-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .75rem;
+        margin: .8rem 0 1.2rem;
+    }
+
+    .console-card {
+        padding: .9rem 1rem;
+    }
+
+    .console-label {
+        color: var(--muted);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .console-value {
+        margin-top: .35rem;
+        color: var(--red-deep);
+        font-weight: 780;
+        line-height: 1.5;
+    }
+
+    .final-report-card,
+    .evidence-chain {
+        padding: 1rem 1.05rem;
+    }
+
+    .final-report-row {
+        display: flex;
+        justify-content: space-between;
+        gap: .8rem;
+        padding: .42rem 0;
+        border-bottom: 1px solid rgba(140, 29, 40, .08);
+        color: var(--muted);
+        font-size: .9rem;
+    }
+
+    .final-report-row strong {
+        color: var(--ink);
+        text-align: right;
+    }
+
+    .final-report-recommendation {
+        margin-top: .75rem;
+        color: var(--red-deep);
+        font-size: .92rem;
+        line-height: 1.65;
+        font-weight: 650;
+    }
+
+    .work-log-card {
+        padding: .9rem 1rem;
+        border-left: 5px solid rgba(140, 29, 40, .28);
+    }
+
+    .work-log-card.success { border-left-color: #4e8568; }
+    .work-log-card.warning { border-left-color: #bd812e; }
+    .work-log-card.danger { border-left-color: #a32b33; }
+
+    .work-log-head {
+        display: flex;
+        justify-content: space-between;
+        gap: .7rem;
+        color: var(--ink);
+        font-weight: 760;
+    }
+
+    .work-log-text {
+        margin-top: .55rem;
+        color: var(--muted);
+        font-size: .88rem;
+        line-height: 1.65;
+    }
+
+    .evidence-chain {
+        margin-top: .85rem;
+        border-left: 5px solid var(--gold);
+    }
+
+    .evidence-chain-title {
+        color: var(--red-deep);
+        font-weight: 760;
+        margin-bottom: .45rem;
+    }
+
+    .evidence-chain-item {
+        color: var(--muted);
+        font-size: .92rem;
+        line-height: 1.65;
     }
 
     .section-title {
@@ -434,7 +583,9 @@ st.markdown(
         .hero::after { display: none; }
         .agent-grid,
         .stage-grid,
-        .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .report-grid,
+        .console-grid,
+        .work-log-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .execution-step { grid-template-columns: 1fr; }
         .execution-meta { grid-template-columns: 1fr; }
     }
@@ -455,6 +606,100 @@ def render_stage_cards(stages: list[dict]) -> None:
         for stage in stages
     )
     st.markdown(f'<div class="stage-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_demo_console(report: dict) -> None:
+    items = [
+        ("当前任务", report["question"]),
+        ("执行模式", report["mode"]),
+        ("任务状态", "已完成"),
+        ("可信等级", report["decision"]),
+    ]
+    cards = "".join(
+        (
+            f'<div class="console-card">'
+            f'<div class="console-label">{html.escape(label)}</div>'
+            f'<div class="console-value">{html.escape(value)}</div>'
+            f"</div>"
+        )
+        for label, value in items
+    )
+    st.markdown(f'<div class="console-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_evidence_chain(chain: list[str]) -> None:
+    if not chain:
+        return
+    items = "".join(
+        f'<div class="evidence-chain-item">[{index}] {html.escape(source)}</div>'
+        for index, source in enumerate(chain, start=1)
+    )
+    st.markdown(
+        (
+            '<div class="evidence-chain">'
+            '<div class="evidence-chain-title">本回答依据</div>'
+            f"{items}"
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_final_report(report: dict) -> None:
+    rows = [
+        ("生成方式", report["generation_mode"]),
+        ("召回证据", f'{report["evidence_count"]} 条'),
+        ("引用来源", f'{report["citation_count"]} 条'),
+        ("溯源审查", report["source_status"]),
+        ("规范初筛", report["policy_status"]),
+    ]
+    row_html = "".join(
+        (
+            f'<div class="final-report-row">'
+            f'<span>{html.escape(label)}</span>'
+            f'<strong>{html.escape(value)}</strong>'
+            f"</div>"
+        )
+        for label, value in rows
+    )
+    st.markdown(
+        (
+            '<div class="final-report-card">'
+            f"{row_html}"
+            f'<div class="final-report-recommendation">{html.escape(report["recommendation"])}</div>'
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_work_logs(logs: list[dict]) -> None:
+    cards = "".join(
+        (
+            f'<div class="work-log-card {html.escape(item["tone"])}">'
+            f'<div class="work-log-head">'
+            f'<span>{html.escape(item["agent"])}</span>'
+            f'<span class="{html.escape(item["tone"])}">{html.escape(item["status"])}</span>'
+            f"</div>"
+            f'<div class="work-log-text">{html.escape(item["log"])}</div>'
+            f"</div>"
+        )
+        for item in logs
+    )
+    st.markdown(f'<div class="work-log-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_system_note() -> None:
+    with st.expander("系统说明：受控流程式多智能体架构", expanded=False):
+        st.markdown(
+            """
+            本系统将一次教学问答拆分为四个固定环节：检索、生成、溯源审查与内容规范审查。
+            每个智能体只承担一个明确职责，最终形成带证据来源、审查结果和任务报告的回答。
+
+            当前版本使用固定知识库进行离线检索，并通过 GLM-4.5-Air 或本地兜底生成器组织回答。
+            规则型审查用于辅助展示和初筛，不替代人工复核与专业判断。
+            """
+        )
 
 
 def render_agent_workbench(agents: list[dict]) -> None:
@@ -573,14 +818,18 @@ def render_result(view: dict) -> None:
     decision = view["decision"]
     answer_html = html.escape(view["answer"]).replace("\n", "<br>")
 
+    st.markdown('<div class="section-title">演示总控台</div>', unsafe_allow_html=True)
+    render_demo_console(view["final_report"])
+
     answer_column, side_column = st.columns([1.8, 1], gap="large")
     with answer_column:
         st.markdown('<div class="section-title">可信回答</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="answer-card">{answer_html}</div>', unsafe_allow_html=True)
+        render_evidence_chain(view["evidence_chain"])
 
     with side_column:
-        st.markdown('<div class="section-title">任务报告</div>', unsafe_allow_html=True)
-        render_task_report(view["task_report"])
+        st.markdown('<div class="section-title">最终任务报告</div>', unsafe_allow_html=True)
+        render_final_report(view["final_report"])
         st.markdown('<div class="section-title">审查结论</div>', unsafe_allow_html=True)
         st.markdown(
             (
@@ -599,6 +848,7 @@ def render_result(view: dict) -> None:
     )
     render_agent_workbench(view["agents"])
     render_controlled_flow()
+    render_work_logs(view["work_logs"])
 
     detail_column, output_column = st.columns([1.25, 1], gap="large")
     with detail_column:
@@ -646,19 +896,31 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+render_system_note()
 
-st.markdown('<div class="section-title">一键示例</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">演示场景</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="section-note">点击任一示例，系统将依次完成检索、生成、溯源审查与内容规范审查。</div>',
+    '<div class="section-note">选择一个场景，系统将依次完成检索、生成、溯源审查与内容规范审查。</div>',
     unsafe_allow_html=True,
 )
 
 selected_question = None
 example_columns = st.columns(3)
-for column, example in zip(example_columns, EXAMPLE_QUESTIONS):
-    if column.button(example, use_container_width=True):
-        selected_question = example
-        st.session_state["question"] = example
+for column, scenario in zip(example_columns, SCENARIO_EXAMPLES):
+    with column:
+        st.markdown(
+            (
+                '<div class="scenario-card">'
+                f'<div class="scenario-label">{html.escape(scenario["label"])}</div>'
+                f'<div class="scenario-question">{html.escape(scenario["question"])}</div>'
+                f'<div class="scenario-desc">{html.escape(scenario["desc"])}</div>'
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+        if st.button(f"选择：{scenario['label']}", use_container_width=True):
+            selected_question = scenario["question"]
+            st.session_state["question"] = scenario["question"]
 
 if "question" not in st.session_state:
     st.session_state["question"] = EXAMPLE_QUESTIONS[0]

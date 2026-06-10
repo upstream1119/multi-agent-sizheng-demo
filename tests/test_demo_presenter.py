@@ -4,6 +4,7 @@ from demo_presenter import build_demo_view
 def test_build_demo_view_formats_successful_result():
     result = {
         "answer": "基于证据形成的回答。",
+        "query": "延安时期思想政治教育有什么特点？",
         "hybrid_hits": [
             {
                 "title": "延安时期的思想政治教育",
@@ -63,6 +64,16 @@ def test_build_demo_view_formats_successful_result():
     assert view["agent_outputs"][2]["expanded"] is False
     assert "hybrid_score" in view["agent_outputs"][0]["details"][0]["lines"][1]
     assert "回答生成结果" == view["agent_outputs"][1]["details"][1]["title"]
+    assert len(view["work_logs"]) == 4
+    assert view["work_logs"][0]["agent"] == "检索智能体"
+    assert "召回 1 条候选证据" in view["work_logs"][0]["log"]
+    assert view["evidence_chain"] == [
+        "《中国共产党思想政治教育史》 · 延安时期 · 第 126 页"
+    ]
+    assert view["final_report"]["question"] == "延安时期思想政治教育有什么特点？"
+    assert view["final_report"]["evidence_count"] == 1
+    assert view["final_report"]["citation_count"] == 0
+    assert view["final_report"]["decision"] == "可展示"
 
 
 def test_build_demo_view_handles_missing_evidence():

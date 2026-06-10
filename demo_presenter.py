@@ -196,6 +196,87 @@ def _build_agent_outputs(result: dict) -> list[dict]:
     ]
 
 
+def _build_work_logs(result: dict) -> list[dict]:
+    evidence_count = len(result.get("hybrid_hits", []))
+    citation_count = len(result.get("citations_used", []))
+    provider_status = result.get("provider_status") or "template"
+    source_label, source_tone = _present_status(result.get("source_check", {}).get("status", ""))
+    policy_label, policy_tone = _present_status(result.get("policy_check", {}).get("status", ""))
+    generator_tone = "success" if provider_status in {"success", "template"} else "warning"
+    generator_log = (
+        f"基于已召回证据组织回答；生成 API 状态为 {provider_status}，引用 {citation_count} 条来源。"
+    )
+    if provider_status == "success":
+        generator_log = f"基于已召回证据调用 GLM-4.5-Air 生成回答，引用 {citation_count} 条来源。"
+
+    return [
+        {
+            "agent": "检索智能体",
+            "status": "已完成" if evidence_count else "证据不足",
+            "tone": "success" if evidence_count else "warning",
+            "log": f"识别用户问题中的主题线索，从固定知识库召回 {evidence_count} 条候选证据。",
+        },
+        {
+            "agent": "回答生成智能体",
+            "status": "已完成" if generator_tone == "success" else "本地兜底",
+            "tone": generator_tone,
+            "log": generator_log,
+        },
+        {
+            "agent": "溯源审查智能体",
+            "status": source_label,
+            "tone": source_tone,
+            "log": f"检查回答是否具备 citation 支撑，当前核验 {result.get('source_check', {}).get('checked_citation_count', 0)} 条 citation。",
+        },
+        {
+            "agent": "内容规范审查智能体",
+            "status": policy_label,
+            "tone": policy_tone,
+            "log": "完成表达边界、证据边界与复核风险的规则初筛。",
+        },
+    ]
+
+
+def _build_evidence_chain(result: dict) -> list[str]:
+    chain = []
+    seen = set()
+    for citation_item in result.get("citations_used", []):
+        citation = citation_item.get("citation", {})
+        source = _format_source(citation)
+        if source not in seen:
+            chain.append(source)
+            seen.add(source)
+    if chain:
+        return chain
+    for hit in result.get("hybrid_hits", [])[:2]:
+        source = _format_source(hit.get("citation", {}))
+        if source not in seen:
+            chain.append(source)
+            seen.add(source)
+    return chain
+
+
+def _build_final_report(result: dict, decision: dict, source_label: str, policy_label: str) -> dict:
+    provider_status = result.get("provider_status") or "template"
+    generation_mode = "GLM-4.5-Air" if provider_status == "success" else "本地兜底生成"
+    decision_label, _ = _present_status(decision.get("status", ""))
+    recommendation = "可作为教学辅助回答使用，展示时建议保留证据边界说明。"
+    if decision_label in {"需要复核", "建议复核", "证据不足"}:
+        recommendation = "建议作为阶段性回答展示，并提示仍需人工复核。"
+
+    return {
+        "question": result.get("query") or "当前问题待确认",
+        "mode": "固定知识库 + KG-RAG 检索 + GLM-4.5-Air/本地兜底 + 规则审查",
+        "generation_mode": generation_mode,
+        "evidence_count": len(result.get("hybrid_hits", [])),
+        "citation_count": len(result.get("citations_used", [])),
+        "source_status": source_label,
+        "policy_status": policy_label,
+        "decision": decision_label,
+        "recommendation": recommendation,
+    }
+
+
 def build_demo_view(result: dict) -> dict:
     stages = []
     agents = []
@@ -254,6 +335,11 @@ def build_demo_view(result: dict) -> dict:
     decision_label, decision_tone = _present_status(final_decision.get("status", ""))
     source_label, _ = _present_status(result.get("source_check", {}).get("status", ""))
     policy_label, _ = _present_status(result.get("policy_check", {}).get("status", ""))
+    decision = {
+        "label": decision_label,
+        "tone": decision_tone,
+        "reason": final_decision.get("reason") or "系统尚未形成最终结论。",
+    }
 
     return {
         "answer": result.get("answer") or "当前未形成回答。",
@@ -261,6 +347,9 @@ def build_demo_view(result: dict) -> dict:
         "agents": agents,
         "execution_steps": execution_steps,
         "agent_outputs": _build_agent_outputs(result),
+        "work_logs": _build_work_logs(result),
+        "evidence_chain": _build_evidence_chain(result),
+        "final_report": _build_final_report(result, final_decision, source_label, policy_label),
         "evidence": evidence,
         "task_report": {
             "evidence_count": len(result.get("hybrid_hits", [])),
@@ -268,11 +357,7 @@ def build_demo_view(result: dict) -> dict:
             "source_status": source_label,
             "policy_status": policy_label,
         },
-        "decision": {
-            "label": decision_label,
-            "tone": decision_tone,
-            "reason": final_decision.get("reason") or "系统尚未形成最终结论。",
-        },
+        "decision": decision,
         "source_check": result.get("source_check", {}),
         "policy_check": result.get("policy_check", {}),
         "provider_status": result.get("provider_status"),
