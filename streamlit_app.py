@@ -449,6 +449,27 @@ st.markdown(
         line-height: 1.85;
     }
 
+    .comparison-sources {
+        margin-top: 1rem;
+        padding: .85rem .9rem;
+        border: 1px solid rgba(78, 133, 104, .18);
+        border-radius: 12px;
+        background: rgba(78, 133, 104, .055);
+    }
+
+    .comparison-sources-title {
+        margin-bottom: .45rem;
+        color: #357052;
+        font-size: .82rem;
+        font-weight: 780;
+    }
+
+    .comparison-source-item {
+        color: var(--muted);
+        font-size: .82rem;
+        line-height: 1.65;
+    }
+
     .capability-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -786,6 +807,26 @@ def render_comparison_card(item: dict, card_type: str) -> None:
         for label, value in item.get("capabilities", [])
     )
     answer_html = html.escape(item.get("answer", "")).replace("\n", "<br>")
+    sources = item.get("sources", [])
+    source_html = ""
+    if sources:
+        source_items = "".join(
+            (
+                '<div class="comparison-source-item">'
+                f'[{source.get("index", index)}] '
+                f'《{html.escape(source["title"])}》 · '
+                f'{html.escape(source["section"])} · '
+                f'{html.escape(source["page"])}'
+                "</div>"
+            )
+            for index, source in enumerate(sources, start=1)
+        )
+        source_html = (
+            '<div class="comparison-sources">'
+            '<div class="comparison-sources-title">引用来源</div>'
+            f"{source_items}"
+            "</div>"
+        )
     st.markdown(
         (
             f'<div class="comparison-card {html.escape(card_type)}">'
@@ -795,6 +836,7 @@ def render_comparison_card(item: dict, card_type: str) -> None:
             f'{html.escape(item["status"])}</div>'
             "</div>"
             f'<div class="comparison-answer">{answer_html}</div>'
+            f"{source_html}"
             f'<div class="capability-grid">{capabilities}</div>'
             "</div>"
         ),
@@ -846,12 +888,13 @@ def render_source_cards(cards: list[dict]) -> None:
     card_html = "".join(
         (
             '<div class="source-card">'
-            f'<div class="source-card-title">{html.escape(item["title"])}</div>'
+            f'<div class="source-card-title">[{item.get("index", index)}] '
+            f'{html.escape(item["title"])}</div>'
             f'<div class="source-card-section">{html.escape(item["section"])}</div>'
             f'<div class="source-card-page">{html.escape(item["page"])}</div>'
             "</div>"
         )
-        for item in cards
+        for index, item in enumerate(cards, start=1)
     )
     st.markdown(f'<div class="source-card-grid">{card_html}</div>', unsafe_allow_html=True)
 
@@ -945,11 +988,12 @@ def ensure_view_defaults(view: dict) -> dict:
         "source_cards",
         [
             {
+                "index": index,
                 "title": item.get("title", "课程资料"),
                 "section": item.get("source", "相关章节"),
                 "page": "可查看资料原文",
             }
-            for item in view["evidence"][:3]
+            for index, item in enumerate(view["evidence"][:3], start=1)
         ],
     )
     view.setdefault(
@@ -986,6 +1030,7 @@ def ensure_view_defaults(view: dict) -> dict:
             "trusted": {
                 "title": "资料增强回答",
                 "answer": view.get("display_answer", view["answer"]),
+                "sources": view.get("source_cards", []),
                 "status": "资料增强",
                 "tone": "success",
                 "capabilities": [
@@ -1005,6 +1050,7 @@ def ensure_view_defaults(view: dict) -> dict:
         ("回答检查", "未进行"),
     ]
     trusted_comparison["title"] = "资料增强回答"
+    trusted_comparison["sources"] = view.get("source_cards", [])
     trusted_comparison["capabilities"] = [
         ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
         ("来源可查", f'{len(view.get("source_cards", []))} 处'),
@@ -1118,7 +1164,7 @@ def render_controlled_flow() -> None:
             <span>→</span>
             <span class="flow-node">内容规范审查智能体</span>
             <span>→</span>
-            <span class="flow-node">任务报告</span>
+            <span class="flow-node">可信回答</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1139,7 +1185,10 @@ def render_result(view: dict) -> None:
     with trusted_column:
         render_comparison_card(view["comparison"]["trusted"], "trusted")
 
-    st.markdown('<div class="section-title">资料增强回答多做了什么</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">多智能体协作流程</div>', unsafe_allow_html=True)
+    render_controlled_flow()
+
+    st.markdown('<div class="section-title">知识增强回答的可信依据</div>', unsafe_allow_html=True)
     render_benefits()
 
     st.markdown('<div class="section-title">参考资料</div>', unsafe_allow_html=True)
@@ -1155,17 +1204,13 @@ def render_result(view: dict) -> None:
 st.markdown(
     """
     <div class="hero">
-        <div class="eyebrow">TRUSTWORTHY TEACHING ASSISTANT</div>
-        <h1>可信教学问答助手</h1>
-        <p>
-            针对同一个问题，同时展示普通大模型回答和资料增强回答，
-            并给出可核对的参考资料与出处。
-        </p>
+        <div class="eyebrow">KNOWLEDGE-GROUNDED MULTI-AGENT SYSTEM</div>
+        <h1>思想政治教育知识增强多智能体问答系统</h1>
         <div class="badges">
-            <span class="badge">回答对比</span>
-            <span class="badge">资料支持</span>
-            <span class="badge">来源可查</span>
-            <span class="badge">回答检查</span>
+            <span class="badge">普通模型对照</span>
+            <span class="badge">知识库增强</span>
+            <span class="badge">引用可溯源</span>
+            <span class="badge">多智能体核验</span>
         </div>
     </div>
     """,

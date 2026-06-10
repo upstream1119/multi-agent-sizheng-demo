@@ -1,4 +1,30 @@
-from src.generator.evidence_generator import generate_answer, generate_baseline_answer
+from src.generator.evidence_generator import (
+    build_evidence_prompt,
+    generate_answer,
+    generate_baseline_answer,
+)
+
+
+def test_evidence_prompt_requires_inline_numbered_citations():
+    prompt = build_evidence_prompt(
+        "三湾改编有什么意义？",
+        [
+            {
+                "title": "三湾改编",
+                "text": "三湾改编确立了支部建在连上的原则。",
+                "citation": {
+                    "doc": "中国共产党思想政治教育史",
+                    "section": "三湾改编",
+                    "page": 75,
+                },
+            }
+        ],
+    )
+
+    assert "关键结论" in prompt
+    assert "标注证据编号" in prompt
+    assert "[1]" in prompt
+    assert "不能使用未提供的证据编号" in prompt
 
 
 def test_llm_mode_uses_provider_text(monkeypatch):

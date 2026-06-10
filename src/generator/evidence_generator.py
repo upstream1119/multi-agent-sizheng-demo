@@ -45,11 +45,28 @@ def build_evidence_prompt(query: str, hybrid_hits: list[dict], max_hits: int = 3
         "如果证据不足，请明确说明证据不足，不能编造 citation。\n\n"
         "输出要求：\n"
         "1. 用 2-4 段中文回答，语言自然，适合教学展示。\n"
-        "2. 回答中必须包含“仅依据当前检索到的证据”这句话。\n"
-        "3. 末尾必须列出“引用依据”，并写明来源、章节和 PDF 页码。\n\n"
+        "2. 对事实判断和关键结论，在对应句末标注证据编号，如 [1]、[2]。\n"
+        "3. 可以使用“根据《资料名称》的相关论述”等自然表达说明依据。\n"
+        "4. 只能使用下方已经提供的证据编号，不能使用未提供的证据编号。\n"
+        "5. 不要另写参考文献列表，系统会将编号与来源、章节和页码自动对应。\n\n"
         f"问题：{query}\n\n"
         f"证据：\n{evidence_text}"
     )
+
+
+def _build_citations_used(hybrid_hits: list[dict], max_hits: int = 3) -> list[dict]:
+    citations = []
+    for hit in hybrid_hits[:max_hits]:
+        citations.append(
+            {
+                "id": hit.get("id"),
+                "title": hit.get("title"),
+                "source": hit.get("source"),
+                "citation": hit.get("citation", {}),
+                "hybrid_score": hit.get("hybrid_score"),
+            }
+        )
+    return citations
 
 
 def generate_baseline_answer(query: str) -> dict:
@@ -84,6 +101,7 @@ def generate_answer(query: str, hybrid_hits: list[dict]) -> dict:
         generated = generate_answer_from_hits(query, hybrid_hits)
         if provider_result.status == "success" and provider_result.text.strip():
             generated["answer"] = provider_result.text.strip()
+            generated["citations_used"] = _build_citations_used(hybrid_hits)
         generated["generator_mode"] = LLM_MODE
         generated["generator_provider"] = provider_result.provider_name
         generated["provider_status"] = provider_result.status

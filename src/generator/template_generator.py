@@ -57,9 +57,9 @@ def generate_answer_from_hits(query: str, hybrid_hits: list[dict], max_hits: int
 
     answer = (
         f"针对问题“{query}”，根据当前检索到的资料，可以形成如下阶段性回答："
-        f"{top_text}"
+        f"{top_text}[1]"
         "\n\n"
-        "引用依据：\n"
+        "引用来源：\n"
         + "\n".join(citation_lines)
         + "\n\n以上回答仅依据当前检索到的证据生成，系统已同步给出来源核验与内容规范初筛结果。"
     )

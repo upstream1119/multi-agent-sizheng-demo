@@ -1,3 +1,6 @@
+import re
+
+
 NO_EVIDENCE_STATUS = "no_evidence"
 PASS_STATUS = "pass"
 WARNING_STATUS = "warning"
@@ -17,9 +20,15 @@ def check_answer_sources(answer: str, citations_used: list[dict]) -> dict:
         }
 
     issues = []
-    has_source_marker = "来源：" in answer or "PDF 页码" in answer
-    if not has_source_marker:
-        issues.append("answer 中没有明显来源说明。")
+    inline_citations = [int(index) for index in re.findall(r"\[(\d+)\]", answer)]
+    if not inline_citations:
+        issues.append("回答正文没有标注证据编号，如 [1]。")
+
+    invalid_citations = sorted(
+        {index for index in inline_citations if index < 1 or index > len(citations_used)}
+    )
+    for index in invalid_citations:
+        issues.append(f"回答引用了不存在的证据编号 [{index}]。")
 
     for citation_item in citations_used:
         citation = citation_item.get("citation", {})
@@ -34,7 +43,12 @@ def check_answer_sources(answer: str, citations_used: list[dict]) -> dict:
     status = PASS_STATUS
     if issues:
         status = WARNING_STATUS
-    if any("缺少 citation.doc" in issue or "缺少 citation.section" in issue for issue in issues):
+    if any(
+        "缺少 citation.doc" in issue
+        or "缺少 citation.section" in issue
+        or "不存在的证据编号" in issue
+        for issue in issues
+    ):
         status = FAIL_STATUS
 
     return {

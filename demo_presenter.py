@@ -85,8 +85,9 @@ def _short_detail(text: str, limit: int = 220) -> str:
 
 def _clean_display_answer(answer: str) -> str:
     answer = (answer or "").strip()
-    if "引用依据：" in answer:
-        answer = answer.split("引用依据：", 1)[0].strip()
+    for marker in ("引用依据：", "引用来源："):
+        if marker in answer:
+            answer = answer.split(marker, 1)[0].strip()
     cleaned_lines = []
     for line in answer.splitlines():
         line = line.strip()
@@ -279,15 +280,17 @@ def _build_evidence_chain(result: dict) -> list[str]:
 def _build_source_cards(result: dict) -> list[dict]:
     cards = []
     seen = set()
-    for hit in result.get("hybrid_hits", [])[:3]:
-        citation = hit.get("citation", {})
+    source_items = result.get("citations_used") or result.get("hybrid_hits", [])[:3]
+    for item in source_items:
+        citation = item.get("citation", {})
         source = _format_source(citation)
         if source in seen:
             continue
         seen.add(source)
         cards.append(
             {
-                "title": citation.get("doc") or hit.get("title") or "课程资料",
+                "index": len(cards) + 1,
+                "title": citation.get("doc") or item.get("title") or "课程资料",
                 "section": citation.get("section") or "相关章节",
                 "page": "页码待复核" if citation.get("page") is None else f"第 {citation.get('page')} 页",
             }
@@ -338,6 +341,7 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
         "trusted": {
             "title": "资料增强回答",
             "answer": trusted_answer,
+            "sources": _build_source_cards(result),
             "status": "资料增强",
             "tone": "success",
             "capabilities": [
