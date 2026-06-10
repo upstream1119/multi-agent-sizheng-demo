@@ -570,7 +570,29 @@ def render_controlled_flow() -> None:
 
 
 def render_result(view: dict) -> None:
-    st.markdown('<div class="section-title">智能体工作台</div>', unsafe_allow_html=True)
+    decision = view["decision"]
+    answer_html = html.escape(view["answer"]).replace("\n", "<br>")
+
+    answer_column, side_column = st.columns([1.8, 1], gap="large")
+    with answer_column:
+        st.markdown('<div class="section-title">可信回答</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="answer-card">{answer_html}</div>', unsafe_allow_html=True)
+
+    with side_column:
+        st.markdown('<div class="section-title">任务报告</div>', unsafe_allow_html=True)
+        render_task_report(view["task_report"])
+        st.markdown('<div class="section-title">审查结论</div>', unsafe_allow_html=True)
+        st.markdown(
+            (
+                f'<div class="decision-card {decision["tone"]}">'
+                f'<div class="decision-title">{html.escape(decision["label"])}</div>'
+                f'<div class="decision-reason">{html.escape(decision["reason"])}</div>'
+                f"</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="section-title">多智能体执行总览</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="section-note">系统采用受控流程式多智能体协同：每个智能体只负责固定环节，按顺序完成任务。</div>',
         unsafe_allow_html=True,
@@ -578,33 +600,22 @@ def render_result(view: dict) -> None:
     render_agent_workbench(view["agents"])
     render_controlled_flow()
 
-    st.markdown('<div class="section-title">多智能体执行记录</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-note">每个节点展示本次调用的智能体、工具、输入、输出与最终状态。</div>',
-        unsafe_allow_html=True,
-    )
-    render_execution_monitor(view["execution_steps"])
+    detail_column, output_column = st.columns([1.25, 1], gap="large")
+    with detail_column:
+        st.markdown('<div class="section-title">执行记录</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-note">展示每个节点调用的智能体、工具、输入、输出与最终状态。</div>',
+            unsafe_allow_html=True,
+        )
+        render_execution_monitor(view["execution_steps"])
 
-    st.markdown('<div class="section-title">智能体单步输出</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-note">可展开查看每个智能体的独立输出，默认展示检索与生成结果。</div>',
-        unsafe_allow_html=True,
-    )
-    render_agent_outputs(view["agent_outputs"])
-
-    st.markdown('<div class="section-title">任务完成报告</div>', unsafe_allow_html=True)
-    render_task_report(view["task_report"])
-
-    st.markdown('<div class="section-title">可信回答</div>', unsafe_allow_html=True)
-    answer_html = html.escape(view["answer"]).replace("\n", "<br>")
-    st.markdown(f'<div class="answer-card">{answer_html}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="section-title">受控任务流</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-note">下方展示本次任务中各流程节点的执行状态。</div>',
-        unsafe_allow_html=True,
-    )
-    render_stage_cards(view["stages"])
+    with output_column:
+        st.markdown('<div class="section-title">单步输出</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-note">可展开查看每个智能体的独立输出。</div>',
+            unsafe_allow_html=True,
+        )
+        render_agent_outputs(view["agent_outputs"])
 
     st.markdown('<div class="section-title">参考依据</div>', unsafe_allow_html=True)
     if view["evidence"]:
@@ -614,18 +625,6 @@ def render_result(view: dict) -> None:
                 st.caption(evidence["source"])
     else:
         st.info("当前固定知识库中没有检索到足够证据，请尝试示例问题或调整提问。")
-
-    decision = view["decision"]
-    st.markdown('<div class="section-title">审查结论</div>', unsafe_allow_html=True)
-    st.markdown(
-        (
-            f'<div class="decision-card {decision["tone"]}">'
-            f'<div class="decision-title">{html.escape(decision["label"])}</div>'
-            f'<div class="decision-reason">{html.escape(decision["reason"])}</div>'
-            f"</div>"
-        ),
-        unsafe_allow_html=True,
-    )
 
 
 st.markdown(
