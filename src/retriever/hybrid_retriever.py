@@ -374,6 +374,8 @@ def retrieve(query: str) -> dict:
         generated_future = executor.submit(generate_answer, query_text, hybrid_hits)
         baseline = baseline_future.result()
         generated = generated_future.result()
+    if baseline.get("provider_status") != "success":
+        baseline = generate_baseline_answer(query_text)
     source_check = check_answer_sources(
         generated["answer"],
         generated["citations_used"],

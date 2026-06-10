@@ -1,6 +1,5 @@
 import html
 import os
-import time
 
 import streamlit as st
 
@@ -23,17 +22,17 @@ SCENARIO_EXAMPLES = [
     {
         "label": "概念解释",
         "question": EXAMPLE_QUESTIONS[0],
-        "desc": "解释核心概念，适合展示系统如何形成教学化回答。",
+        "desc": "解释课程中的核心概念，形成清晰易懂的回答。",
     },
     {
         "label": "历史事件分析",
         "question": EXAMPLE_QUESTIONS[1],
-        "desc": "围绕具体历史事件，展示检索、生成与溯源链路。",
+        "desc": "结合课程资料，分析历史事件的意义与影响。",
     },
     {
         "label": "教育实践总结",
         "question": EXAMPLE_QUESTIONS[2],
-        "desc": "总结教育实践经验，展示审查与复核提示能力。",
+        "desc": "归纳特定时期的教育实践与主要特点。",
     },
 ]
 
@@ -442,6 +441,45 @@ st.markdown(
         font-weight: 720;
     }
 
+    .benefit-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .8rem;
+        margin: .85rem 0 1.25rem;
+    }
+
+    .benefit-card {
+        padding: 1rem 1.05rem;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(255,255,255,.78);
+        text-align: center;
+    }
+
+    .benefit-index {
+        width: 2.1rem;
+        height: 2.1rem;
+        display: grid;
+        place-items: center;
+        margin: 0 auto .55rem;
+        border-radius: 999px;
+        background: rgba(78, 133, 104, .12);
+        color: #357052;
+        font-weight: 800;
+    }
+
+    .benefit-title {
+        color: var(--ink);
+        font-weight: 760;
+    }
+
+    .benefit-text {
+        margin-top: .35rem;
+        color: var(--muted);
+        font-size: .86rem;
+        line-height: 1.6;
+    }
+
     .agent-grid,
     .stage-grid,
     .report-grid {
@@ -661,6 +699,7 @@ st.markdown(
         .execution-step { grid-template-columns: 1fr; }
         .execution-meta { grid-template-columns: 1fr; }
         .capability-grid { grid-template-columns: 1fr; }
+        .benefit-grid { grid-template-columns: 1fr; }
     }
     </style>
     """,
@@ -725,6 +764,25 @@ def render_comparison_card(item: dict, card_type: str) -> None:
         ),
         unsafe_allow_html=True,
     )
+
+
+def render_benefits() -> None:
+    items = [
+        ("1", "先查资料", "回答前先从课程资料中查找相关内容。"),
+        ("2", "标明出处", "给出资料名称、章节和页码，方便核对。"),
+        ("3", "回答后检查", "生成后再次检查来源和表达是否稳妥。"),
+    ]
+    cards = "".join(
+        (
+            '<div class="benefit-card">'
+            f'<div class="benefit-index">{index}</div>'
+            f'<div class="benefit-title">{title}</div>'
+            f'<div class="benefit-text">{text}</div>'
+            "</div>"
+        )
+        for index, title, text in items
+    )
+    st.markdown(f'<div class="benefit-grid">{cards}</div>', unsafe_allow_html=True)
 
 
 def render_evidence_chain(chain: list[str]) -> None:
@@ -847,31 +905,51 @@ def ensure_view_defaults(view: dict) -> dict:
         "comparison",
         {
             "baseline": {
-                "title": "普通大模型回答",
-                "answer": "请重新提交问题以生成普通大模型对比回答。",
-                "status": "等待生成",
+                "title": "普通大模型",
+                "answer": "请重新点击生成，以获得普通大模型的对比回答。",
+                "status": "等待回答",
                 "tone": "neutral",
                 "capabilities": [
-                    ("知识库证据", "未提供"),
-                    ("来源与页码", "未提供"),
-                    ("溯源审查", "未执行"),
-                    ("内容规范初筛", "未执行"),
+                    ("参考资料", "未提供"),
+                    ("来源可查", "不支持"),
+                    ("回答检查", "未进行"),
                 ],
             },
             "trusted": {
-                "title": "可信多智能体回答",
+                "title": "本系统",
                 "answer": view["answer"],
-                "status": "任务完成",
+                "status": "资料增强",
                 "tone": "success",
                 "capabilities": [
-                    ("知识库证据", f'{view["task_report"].get("evidence_count", 0)} 条'),
-                    ("来源与页码", f'{view["task_report"].get("citation_count", 0)} 条引用'),
-                    ("溯源审查", view["task_report"].get("source_status", "待确认")),
-                    ("内容规范初筛", view["task_report"].get("policy_status", "待确认")),
+                    ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
+                    ("来源可查", f'{view["task_report"].get("citation_count", 0)} 条'),
+                    (
+                        "回答检查",
+                        f'来源{view["task_report"].get("source_status", "待确认")}，'
+                        f'内容{view["task_report"].get("policy_status", "待确认")}',
+                    ),
                 ],
             },
         },
     )
+    baseline_comparison = view["comparison"].setdefault("baseline", {})
+    trusted_comparison = view["comparison"].setdefault("trusted", {})
+    baseline_comparison["title"] = "普通大模型"
+    baseline_comparison["capabilities"] = [
+        ("参考资料", "未提供"),
+        ("来源可查", "不支持"),
+        ("回答检查", "未进行"),
+    ]
+    trusted_comparison["title"] = "本系统"
+    trusted_comparison["capabilities"] = [
+        ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
+        ("来源可查", f'{view["task_report"].get("citation_count", 0)} 条'),
+        (
+            "回答检查",
+            f'来源{view["task_report"].get("source_status", "待确认")}，'
+            f'内容{view["task_report"].get("policy_status", "待确认")}',
+        ),
+    ]
     return view
 
 
@@ -989,14 +1067,10 @@ def render_controlled_flow() -> None:
 
 def render_result(view: dict) -> None:
     view = ensure_view_defaults(view)
-    decision = view["decision"]
 
-    st.markdown('<div class="section-title">演示总控台</div>', unsafe_allow_html=True)
-    render_demo_console(view["final_report"])
-
-    st.markdown('<div class="section-title">回答效果对比</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">同一个问题，两种回答</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-note">使用同一问题，对比普通大模型直答与可信多智能体流程的输出差异。</div>',
+        '<div class="section-note">左侧为普通大模型直接回答，右侧为本系统查阅资料并检查后的回答。</div>',
         unsafe_allow_html=True,
     )
     baseline_column, trusted_column = st.columns(2, gap="large")
@@ -1005,77 +1079,44 @@ def render_result(view: dict) -> None:
     with trusted_column:
         render_comparison_card(view["comparison"]["trusted"], "trusted")
 
-    evidence_column, report_column = st.columns([1.25, 1], gap="large")
-    with evidence_column:
-        st.markdown('<div class="section-title">可信依据</div>', unsafe_allow_html=True)
-        render_evidence_chain(view["evidence_chain"])
-        st.markdown('<div class="section-title">审查结论</div>', unsafe_allow_html=True)
-        st.markdown(
-            (
-                f'<div class="decision-card {decision["tone"]}">'
-                f'<div class="decision-title">{html.escape(decision["label"])}</div>'
-                f'<div class="decision-reason">{html.escape(decision["reason"])}</div>'
-                f"</div>"
-            ),
-            unsafe_allow_html=True,
-        )
+    st.markdown('<div class="section-title">本系统多做了什么</div>', unsafe_allow_html=True)
+    render_benefits()
 
-    with report_column:
-        st.markdown('<div class="section-title">最终任务报告</div>', unsafe_allow_html=True)
-        render_final_report(view["final_report"])
-
-    with st.expander("查看多智能体处理过程与技术详情", expanded=False):
-        st.markdown('<div class="section-title">多智能体执行总览</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-note">以下内容用于说明系统内部的角色分工、执行过程和各智能体输出。</div>',
-            unsafe_allow_html=True,
-        )
-        render_agent_workbench(view["agents"])
-        render_controlled_flow()
-        render_work_logs(view["work_logs"])
-
-        detail_column, output_column = st.columns([1.25, 1], gap="large")
-        with detail_column:
-            st.markdown('<div class="section-title">执行记录</div>', unsafe_allow_html=True)
-            render_execution_monitor(view["execution_steps"])
-        with output_column:
-            st.markdown('<div class="section-title">单步输出</div>', unsafe_allow_html=True)
-            render_agent_outputs(view["agent_outputs"])
-
-        st.markdown('<div class="section-title">完整参考依据</div>', unsafe_allow_html=True)
-        if view["evidence"]:
+    st.markdown('<div class="section-title">参考资料</div>', unsafe_allow_html=True)
+    render_evidence_chain(view["evidence_chain"])
+    if view["evidence"]:
+        with st.expander("查看资料原文", expanded=False):
             for index, evidence in enumerate(view["evidence"], start=1):
-                with st.expander(f"证据 {index} · {evidence['title']}", expanded=False):
-                    st.markdown(evidence["text"])
-                    st.caption(evidence["source"])
-        else:
-            st.info("当前固定知识库中没有检索到足够证据，请尝试示例问题或调整提问。")
+                st.markdown(f"**资料 {index}：{evidence['title']}**")
+                st.markdown(evidence["text"])
+                st.caption(evidence["source"])
+    else:
+        st.info("当前资料库中没有找到足够内容，请尝试页面中的示例问题。")
 
 
 st.markdown(
     """
     <div class="hero">
-        <div class="eyebrow">CONTROLLED MULTI-AGENT WORKFLOW</div>
-        <h1>多智能体协同教学问答助手</h1>
+        <div class="eyebrow">TRUSTWORTHY TEACHING ASSISTANT</div>
+        <h1>可信教学问答助手</h1>
         <p>
-            面向思想政治教育场景，系统将一次提问拆分为固定任务流，
-            由检索、生成、溯源审查与内容规范审查智能体分工完成。
+            针对同一个问题，同时展示普通大模型回答和资料增强回答，
+            并给出可核对的参考资料与出处。
         </p>
         <div class="badges">
-            <span class="badge">受控流程式多智能体</span>
-            <span class="badge">固定知识库</span>
-            <span class="badge">证据可追溯</span>
-            <span class="badge">任务报告可视化</span>
+            <span class="badge">回答对比</span>
+            <span class="badge">资料支持</span>
+            <span class="badge">来源可查</span>
+            <span class="badge">回答检查</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-render_system_note()
 
 st.markdown('<div class="section-title">演示场景</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="section-note">选择一个场景，系统将依次完成检索、生成、溯源审查与内容规范审查。</div>',
+    '<div class="section-note">选择一个场景，查看普通回答与资料增强回答的差异。</div>',
     unsafe_allow_html=True,
 )
 
@@ -1107,28 +1148,21 @@ question = st.text_area(
     height=110,
     label_visibility="collapsed",
 )
-analyze = st.button("启动多智能体协同分析", type="primary", use_container_width=True)
+analyze = st.button("生成并对比回答", type="primary", use_container_width=True)
 
 if selected_question or analyze:
     active_question = selected_question or question.strip()
     if not active_question:
         st.warning("请先输入一个问题。")
     else:
-        with st.status("正在执行受控多智能体任务流...", expanded=True) as status:
-            live_panel = st.empty()
-            for active_index in range(len(LIVE_EXECUTION_TEMPLATE)):
-                with live_panel.container():
-                    render_execution_monitor(build_live_execution_steps(active_index))
-                time.sleep(0.35)
+        with st.status("正在生成两种回答...", expanded=True) as status:
+            st.write("正在生成普通大模型回答...")
+            st.write("正在查找相关资料并生成资料增强回答...")
+            st.write("正在整理出处并检查回答...")
             st.session_state["result"] = build_demo_view(retrieve(active_question))
             st.session_state["last_question"] = active_question
             st.session_state["result"] = ensure_view_defaults(st.session_state["result"])
-            with live_panel.container():
-                render_execution_monitor(st.session_state["result"]["execution_steps"])
-            provider_status = st.session_state["result"].get("provider_status")
-            if provider_status and provider_status != "success":
-                st.write(f"提示：生成 API 状态为 {provider_status}，系统已启用本地兜底回答。")
-            status.update(label="多智能体任务流执行完成", state="complete")
+            status.update(label="两种回答已生成", state="complete", expanded=False)
 
 if "result" in st.session_state:
     st.caption(f"本次问题：{st.session_state.get('last_question', '当前问题待确认')}")
@@ -1137,8 +1171,7 @@ if "result" in st.session_state:
 st.markdown(
     """
     <div class="footer-note">
-        本系统为阶段性教学演示版本。回答仅依据当前固定知识库生成，
-        规则型审查结果用于辅助展示，不替代人工复核与专业判断。
+        资料增强回答基于当前课程资料生成，仅用于教学辅助，不替代人工判断。
     </div>
     """,
     unsafe_allow_html=True,

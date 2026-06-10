@@ -283,27 +283,25 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
     trusted_answer = result.get("answer") or "当前未形成可信回答。"
     return {
         "baseline": {
-            "title": "普通大模型回答",
+            "title": "普通大模型",
             "answer": baseline_answer,
-            "status": "生成完成" if baseline_status == "success" else "接口暂不可用",
+            "status": "直接回答" if baseline_status == "success" else "生成失败",
             "tone": "neutral" if baseline_status == "success" else "warning",
             "capabilities": [
-                ("知识库证据", "未提供"),
-                ("来源与页码", "未提供"),
-                ("溯源审查", "未执行"),
-                ("内容规范初筛", "未执行"),
+                ("参考资料", "未提供"),
+                ("来源可查", "不支持"),
+                ("回答检查", "未进行"),
             ],
         },
         "trusted": {
-            "title": "可信多智能体回答",
+            "title": "本系统",
             "answer": trusted_answer,
-            "status": "任务完成",
+            "status": "资料增强",
             "tone": "success",
             "capabilities": [
-                ("知识库证据", f"{len(result.get('hybrid_hits', []))} 条"),
-                ("来源与页码", f"{len(result.get('citations_used', []))} 条引用"),
-                ("溯源审查", source_label),
-                ("内容规范初筛", policy_label),
+                ("参考资料", f"{len(result.get('hybrid_hits', []))} 条"),
+                ("来源可查", f"{len(result.get('citations_used', []))} 条"),
+                ("回答检查", f"来源{source_label}，内容{policy_label}"),
             ],
         },
     }

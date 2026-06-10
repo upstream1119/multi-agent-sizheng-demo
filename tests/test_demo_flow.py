@@ -38,6 +38,39 @@ def test_llm_metadata_is_exposed_when_llm_mode_is_enabled():
     assert view["provider_status"] == "missing_api_key"
 
 
+def test_baseline_answer_retries_once_after_provider_failure(monkeypatch):
+    attempts = []
+
+    def fake_baseline(query):
+        attempts.append(query)
+        if len(attempts) == 1:
+            return {
+                "answer": "普通大模型回答暂时不可用，请稍后重试。",
+                "provider": "fake",
+                "provider_status": "api_error",
+            }
+        return {
+            "answer": "重试后生成的普通大模型回答。",
+            "provider": "fake",
+            "provider_status": "success",
+        }
+
+    monkeypatch.setattr(
+        "src.retriever.hybrid_retriever.generate_baseline_answer",
+        fake_baseline,
+    )
+    monkeypatch.setenv("DACHUANG_RETRIEVE_MODE", "mock")
+    monkeypatch.setenv("DACHUANG_LOCAL_MOCK_ACK", "1")
+    monkeypatch.setenv("DACHUANG_GENERATOR_MODE", "template")
+
+    result = retrieve("三湾改编对人民军队建设有什么意义？")
+
+    assert len(attempts) == 2
+    assert result["baseline_provider_status"] == "success"
+    assert result["baseline_answer"] == "重试后生成的普通大模型回答。"
+    assert result["answer"]
+
+
 @pytest.mark.parametrize(
     ("question", "expected_top_hit"),
     [
