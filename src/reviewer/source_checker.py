@@ -23,6 +23,16 @@ def check_answer_sources(answer: str, citations_used: list[dict]) -> dict:
     inline_citations = [int(index) for index in re.findall(r"\[(\d+)\]", answer)]
     if not inline_citations:
         issues.append("回答正文没有标注证据编号，如 [1]。")
+    else:
+        substantive_paragraphs = [
+            paragraph.strip()
+            for paragraph in re.split(r"\n\s*\n", answer)
+            if len(paragraph.strip()) >= 12
+            and not paragraph.strip().startswith(("引用依据：", "引用来源："))
+        ]
+        for index, paragraph in enumerate(substantive_paragraphs, start=1):
+            if not re.search(r"\[\d+\]", paragraph):
+                issues.append(f"第 {index} 段缺少来源标注。")
 
     invalid_citations = sorted(
         {index for index in inline_citations if index < 1 or index > len(citations_used)}

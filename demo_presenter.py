@@ -326,6 +326,11 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
         "但不会自动展示参考资料、具体出处和回答检查结果。"
     )
     trusted_answer = _clean_display_answer(result.get("answer") or "当前未形成可信回答。")
+    review_status = (
+        "来源与内容已检查"
+        if source_label == "已完成"
+        else "部分内容待核验"
+    )
     return {
         "baseline": {
             "title": "普通大模型",
@@ -347,7 +352,7 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
             "capabilities": [
                 ("参考资料", f"{len(result.get('hybrid_hits', []))} 条"),
                 ("来源可查", f"{len(_build_source_cards(result))} 处"),
-                ("回答检查", "来源与内容已检查"),
+                ("回答检查", review_status),
             ],
         },
     }

@@ -959,6 +959,11 @@ def render_system_note() -> None:
 def ensure_view_defaults(view: dict) -> dict:
     view = dict(view or {})
     task_report = view.get("task_report", {})
+    review_status = (
+        "来源与内容已检查"
+        if task_report.get("source_status") == "已完成"
+        else "部分内容待核验"
+    )
     decision = view.get(
         "decision",
         {"label": "待确认", "tone": "neutral", "reason": "系统尚未形成最终结论。"},
@@ -1036,7 +1041,7 @@ def ensure_view_defaults(view: dict) -> dict:
                 "capabilities": [
                     ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
                     ("来源可查", f'{len(view.get("source_cards", []))} 处'),
-                    ("回答检查", "来源与内容已检查"),
+                    ("回答检查", review_status),
                 ],
             },
         },
@@ -1054,7 +1059,7 @@ def ensure_view_defaults(view: dict) -> dict:
     trusted_comparison["capabilities"] = [
         ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
         ("来源可查", f'{len(view.get("source_cards", []))} 处'),
-        ("回答检查", "来源与内容已检查"),
+        ("回答检查", review_status),
     ]
     return view
 

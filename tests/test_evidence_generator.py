@@ -1,4 +1,5 @@
 from src.generator.evidence_generator import (
+    attach_grounded_citations,
     build_evidence_prompt,
     generate_answer,
     generate_baseline_answer,
@@ -25,6 +26,61 @@ def test_evidence_prompt_requires_inline_numbered_citations():
     assert "标注证据编号" in prompt
     assert "[1]" in prompt
     assert "不能使用未提供的证据编号" in prompt
+
+
+def test_attach_grounded_citations_matches_each_paragraph_to_evidence():
+    answer = (
+        "思想政治教育是中国共产党的政治优势和优良传统，"
+        "在革命、建设和改革过程中发挥了生命线作用。\n\n"
+        "学习和研究这段历史，有助于总结思想政治教育的发展规律，"
+        "并为现实教育实践和学科建设提供借鉴。"
+    )
+    hits = [
+        {
+            "title": "思想政治教育的地位",
+            "text": (
+                "思想政治教育是中国共产党的政治优势和优良传统，"
+                "为中国革命、建设和改革事业发挥了生命线作用。"
+            ),
+            "citation": {"doc": "中国共产党思想政治教育史", "section": "绪论", "page": 15},
+        },
+        {
+            "title": "学习研究的意义",
+            "text": (
+                "学习研究中国共产党思想政治教育史，有助于总结发展规律，"
+                "服务现实教育实践和思想政治教育学科建设。"
+            ),
+            "citation": {
+                "doc": "中国共产党思想政治教育史",
+                "section": "学习研究的目的、意义和方法",
+                "page": 19,
+            },
+        },
+    ]
+
+    result = attach_grounded_citations(answer, hits)
+
+    assert result.split("\n\n")[0].endswith("[1]")
+    assert result.split("\n\n")[1].endswith("[2]")
+
+
+def test_attach_grounded_citations_does_not_force_unmatched_paragraph():
+    result = attach_grounded_citations(
+        "这是一段与证据内容完全无关的天气描述。",
+        [
+            {
+                "title": "三湾改编",
+                "text": "三湾改编确立了支部建在连上的原则。",
+                "citation": {
+                    "doc": "中国共产党思想政治教育史",
+                    "section": "三湾改编",
+                    "page": 75,
+                },
+            }
+        ],
+    )
+
+    assert result == "这是一段与证据内容完全无关的天气描述。"
 
 
 def test_llm_mode_uses_provider_text(monkeypatch):

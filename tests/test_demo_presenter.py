@@ -116,3 +116,33 @@ def test_build_demo_view_handles_missing_evidence():
     assert view["evidence"] == []
     assert view["decision"]["label"] == "证据不足"
     assert view["decision"]["tone"] == "warning"
+
+
+def test_comparison_marks_source_warning_as_pending_review():
+    result = {
+        "answer": "这是一段没有编号引用的回答。",
+        "query": "测试问题",
+        "hybrid_hits": [
+            {
+                "title": "测试资料",
+                "text": "测试资料正文。",
+                "citation": {"doc": "测试资料", "section": "测试章节", "page": 1},
+            }
+        ],
+        "citations_used": [
+            {
+                "title": "测试资料",
+                "citation": {"doc": "测试资料", "section": "测试章节", "page": 1},
+            }
+        ],
+        "source_check": {"status": "warning", "issues": ["第 1 段缺少来源标注。"]},
+        "policy_check": {"status": "pass", "issues": []},
+        "final_decision": {"status": "approved", "reason": "测试"},
+    }
+
+    view = build_demo_view(result)
+
+    assert view["comparison"]["trusted"]["capabilities"][2] == (
+        "回答检查",
+        "部分内容待核验",
+    )

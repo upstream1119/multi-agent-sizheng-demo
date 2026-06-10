@@ -37,3 +37,30 @@ def test_ensure_view_defaults_handles_legacy_session_view():
     assert "重新点击" not in view["comparison"]["baseline"]["answer"]
     assert view["comparison"]["trusted"]["answer"] == "旧 session 中缓存的回答。"
     assert view["source_cards"][0]["page"] == "可查看资料原文"
+
+
+def test_ensure_view_defaults_preserves_source_review_warning():
+    view = ensure_view_defaults(
+        {
+            "answer": "第一段没有来源编号。",
+            "task_report": {
+                "evidence_count": 1,
+                "citation_count": 1,
+                "source_status": "建议复核",
+                "policy_status": "已完成",
+            },
+            "source_cards": [
+                {
+                    "index": 1,
+                    "title": "测试资料",
+                    "section": "测试章节",
+                    "page": "第 1 页",
+                }
+            ],
+        }
+    )
+
+    assert view["comparison"]["trusted"]["capabilities"][2] == (
+        "回答检查",
+        "部分内容待核验",
+    )

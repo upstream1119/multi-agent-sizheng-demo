@@ -1,4 +1,5 @@
 import os
+import re
 
 from src.generator.llm_provider import get_llm_provider
 from src.generator.template_generator import generate_answer_from_hits
@@ -7,6 +8,7 @@ from src.generator.template_generator import generate_answer_from_hits
 TEMPLATE_MODE = "template"
 LLM_MODE = "llm"
 DEFAULT_PROVIDER = "stub"
+MIN_CITATION_MATCH_SCORE = 0.08
 BASELINE_FALLBACK_ANSWER = (
     "普通大模型通常会直接围绕问题给出概括性回答，"
     "但不会自动展示参考资料、具体出处和回答检查结果。"
@@ -69,6 +71,70 @@ def _build_citations_used(hybrid_hits: list[dict], max_hits: int = 3) -> list[di
     return citations
 
 
+def _character_bigrams(text: str) -> set[str]:
+    normalized = "".join(re.findall(r"[\u4e00-\u9fffA-Za-z0-9]", text or ""))
+    return {
+        normalized[index:index + 2]
+        for index in range(max(0, len(normalized) - 1))
+    }
+
+
+def _citation_match_score(paragraph: str, hit: dict) -> float:
+    paragraph_bigrams = _character_bigrams(paragraph)
+    citation = hit.get("citation", {})
+    evidence_text = " ".join(
+        [
+            hit.get("title", ""),
+            hit.get("text", ""),
+            citation.get("doc", ""),
+            citation.get("section", ""),
+        ]
+    )
+    evidence_bigrams = _character_bigrams(evidence_text)
+    if not paragraph_bigrams or not evidence_bigrams:
+        return 0.0
+    overlap = paragraph_bigrams & evidence_bigrams
+    return len(overlap) / min(len(paragraph_bigrams), len(evidence_bigrams))
+
+
+def attach_grounded_citations(
+    answer: str,
+    hybrid_hits: list[dict],
+    max_hits: int = 3,
+) -> str:
+    if not answer or not hybrid_hits:
+        return answer
+
+    hits = hybrid_hits[:max_hits]
+    parts = re.split(r"(\n\s*\n)", answer)
+    cited_parts = []
+    for part in parts:
+        paragraph = part.strip()
+        if (
+            not paragraph
+            or re.fullmatch(r"\n\s*\n", part)
+            or re.search(r"\[\d+\]", paragraph)
+            or paragraph.startswith(("引用依据：", "引用来源："))
+            or len(paragraph) < 12
+        ):
+            cited_parts.append(part)
+            continue
+
+        scores = [
+            _citation_match_score(paragraph, hit)
+            for hit in hits
+        ]
+        best_index = max(range(len(scores)), key=scores.__getitem__)
+        if scores[best_index] < MIN_CITATION_MATCH_SCORE:
+            cited_parts.append(part)
+            continue
+
+        trailing_space = part[len(part.rstrip()):]
+        cited_parts.append(f"{part.rstrip()}[{best_index + 1}]{trailing_space}")
+
+    return "".join(cited_parts)
+
+
 def generate_baseline_answer(query: str) -> dict:
     prompt = (
         "你是一个普通通用大模型，请直接回答用户问题。\n"
@@ -100,7 +166,10 @@ def generate_answer(query: str, hybrid_hits: list[dict]) -> dict:
 
         generated = generate_answer_from_hits(query, hybrid_hits)
         if provider_result.status == "success" and provider_result.text.strip():
-            generated["answer"] = provider_result.text.strip()
+            generated["answer"] = attach_grounded_citations(
+                provider_result.text.strip(),
+                hybrid_hits,
+            )
             generated["citations_used"] = _build_citations_used(hybrid_hits)
         generated["generator_mode"] = LLM_MODE
         generated["generator_provider"] = provider_result.provider_name
