@@ -336,14 +336,14 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
             ],
         },
         "trusted": {
-            "title": "本系统",
+            "title": "资料增强回答",
             "answer": trusted_answer,
             "status": "资料增强",
             "tone": "success",
             "capabilities": [
                 ("参考资料", f"{len(result.get('hybrid_hits', []))} 条"),
                 ("来源可查", f"{len(_build_source_cards(result))} 处"),
-                ("回答检查", f"来源{source_label}，内容{policy_label}"),
+                ("回答检查", "来源与内容已检查"),
             ],
         },
     }

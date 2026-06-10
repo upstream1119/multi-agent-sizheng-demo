@@ -984,18 +984,14 @@ def ensure_view_defaults(view: dict) -> dict:
                 ],
             },
             "trusted": {
-                "title": "本系统",
+                "title": "资料增强回答",
                 "answer": view.get("display_answer", view["answer"]),
                 "status": "资料增强",
                 "tone": "success",
                 "capabilities": [
                     ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
                     ("来源可查", f'{len(view.get("source_cards", []))} 处'),
-                    (
-                        "回答检查",
-                        f'来源{view["task_report"].get("source_status", "待确认")}，'
-                        f'内容{view["task_report"].get("policy_status", "待确认")}',
-                    ),
+                    ("回答检查", "来源与内容已检查"),
                 ],
             },
         },
@@ -1008,15 +1004,11 @@ def ensure_view_defaults(view: dict) -> dict:
         ("来源可查", "不支持"),
         ("回答检查", "未进行"),
     ]
-    trusted_comparison["title"] = "本系统"
+    trusted_comparison["title"] = "资料增强回答"
     trusted_comparison["capabilities"] = [
         ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
         ("来源可查", f'{len(view.get("source_cards", []))} 处'),
-        (
-            "回答检查",
-            f'来源{view["task_report"].get("source_status", "待确认")}，'
-            f'内容{view["task_report"].get("policy_status", "待确认")}',
-        ),
+        ("回答检查", "来源与内容已检查"),
     ]
     return view
 
@@ -1138,7 +1130,7 @@ def render_result(view: dict) -> None:
 
     st.markdown('<div class="section-title">同一个问题，两种回答</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-note">左侧为普通大模型直接回答，右侧为本系统查阅资料并检查后的回答。</div>',
+        '<div class="section-note">左侧为普通大模型直接回答，右侧为查阅资料并检查后的回答。</div>',
         unsafe_allow_html=True,
     )
     baseline_column, trusted_column = st.columns(2, gap="large")
@@ -1147,7 +1139,7 @@ def render_result(view: dict) -> None:
     with trusted_column:
         render_comparison_card(view["comparison"]["trusted"], "trusted")
 
-    st.markdown('<div class="section-title">本系统多做了什么</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">资料增强回答多做了什么</div>', unsafe_allow_html=True)
     render_benefits()
 
     st.markdown('<div class="section-title">参考资料</div>', unsafe_allow_html=True)

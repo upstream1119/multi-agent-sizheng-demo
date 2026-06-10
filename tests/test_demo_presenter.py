@@ -85,13 +85,14 @@ def test_build_demo_view_formats_successful_result():
     assert view["comparison"]["baseline"]["title"] == "普通大模型"
     assert view["comparison"]["baseline"]["capabilities"][0] == ("参考资料", "未提供")
     assert view["comparison"]["trusted"]["answer"] == "基于证据形成的回答。"
-    assert view["comparison"]["trusted"]["title"] == "本系统"
+    assert view["comparison"]["trusted"]["title"] == "资料增强回答"
     assert view["comparison"]["trusted"]["capabilities"][0] == ("参考资料", "1 条")
     assert [label for label, _ in view["comparison"]["trusted"]["capabilities"]] == [
         "参考资料",
         "来源可查",
         "回答检查",
     ]
+    assert view["comparison"]["trusted"]["capabilities"][2] == ("回答检查", "来源与内容已检查")
     assert view["source_cards"][0]["title"] == "中国共产党思想政治教育史"
     assert view["source_cards"][0]["page"] == "第 126 页"
 
