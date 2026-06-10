@@ -7,6 +7,10 @@ from src.generator.template_generator import generate_answer_from_hits
 TEMPLATE_MODE = "template"
 LLM_MODE = "llm"
 DEFAULT_PROVIDER = "stub"
+BASELINE_FALLBACK_ANSWER = (
+    "普通大模型通常会直接围绕问题给出概括性回答，"
+    "但不会自动展示参考资料、具体出处和回答检查结果。"
+)
 
 
 def _resolve_generator_mode() -> str:
@@ -61,7 +65,7 @@ def generate_baseline_answer(query: str) -> dict:
     provider_result = provider.generate(prompt)
     answer = provider_result.text.strip()
     if provider_result.status != "success" or not answer:
-        answer = "普通大模型回答暂时不可用，请稍后重试。"
+        answer = BASELINE_FALLBACK_ANSWER
     return {
         "answer": answer,
         "provider": provider_result.provider_name,

@@ -3,7 +3,11 @@ from demo_presenter import build_demo_view
 
 def test_build_demo_view_formats_successful_result():
     result = {
-        "answer": "基于证据形成的回答。",
+        "answer": (
+            "仅依据当前检索到的证据，基于证据形成的回答。\n\n"
+            "引用依据：\n"
+            "来源：中国共产党思想政治教育史 / 绪论 / PDF 页码 15"
+        ),
         "baseline_answer": "普通大模型直接回答。",
         "baseline_provider_status": "success",
         "query": "延安时期思想政治教育有什么特点？",
@@ -35,7 +39,8 @@ def test_build_demo_view_formats_successful_result():
 
     view = build_demo_view(result)
 
-    assert view["answer"] == "基于证据形成的回答。"
+    assert view["answer"].startswith("仅依据当前检索到的证据")
+    assert view["display_answer"] == "基于证据形成的回答。"
     assert view["stages"][0]["label"] == "证据检索"
     assert view["agents"][0]["name"] == "检索智能体"
     assert view["agents"][0]["task"] == "从固定知识库中召回相关证据。"
@@ -87,6 +92,8 @@ def test_build_demo_view_formats_successful_result():
         "来源可查",
         "回答检查",
     ]
+    assert view["source_cards"][0]["title"] == "中国共产党思想政治教育史"
+    assert view["source_cards"][0]["page"] == "第 126 页"
 
 
 def test_build_demo_view_handles_missing_evidence():

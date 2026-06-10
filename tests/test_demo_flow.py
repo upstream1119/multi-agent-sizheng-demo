@@ -34,7 +34,7 @@ def test_llm_metadata_is_exposed_when_llm_mode_is_enabled():
     assert result["generator_mode"] == "llm"
     assert result["provider_status"] == "missing_api_key"
     assert result["baseline_provider_status"] == "missing_api_key"
-    assert result["baseline_answer"] == "普通大模型回答暂时不可用，请稍后重试。"
+    assert "不会自动展示参考资料" in result["baseline_answer"]
     assert view["provider_status"] == "missing_api_key"
 
 

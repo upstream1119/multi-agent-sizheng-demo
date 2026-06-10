@@ -83,6 +83,26 @@ def _short_detail(text: str, limit: int = 220) -> str:
     return text[:limit].rstrip("，。；、 ") + "..."
 
 
+def _clean_display_answer(answer: str) -> str:
+    answer = (answer or "").strip()
+    if "引用依据：" in answer:
+        answer = answer.split("引用依据：", 1)[0].strip()
+    cleaned_lines = []
+    for line in answer.splitlines():
+        line = line.strip()
+        if not line:
+            cleaned_lines.append("")
+            continue
+        if line.startswith("来源：") or "PDF 页码" in line:
+            continue
+        line = line.replace("仅依据当前检索到的证据，", "")
+        line = line.replace("仅依据当前检索到的证据", "")
+        line = line.replace("以上回答仅依据当前检索到的证据生成，", "")
+        cleaned_lines.append(line)
+    cleaned = "\n".join(cleaned_lines).strip()
+    return cleaned or "当前资料不足，暂未形成可展示回答。"
+
+
 def _build_retrieval_output(result: dict) -> dict:
     hits = result.get("hybrid_hits", [])[:3]
     details = []
@@ -256,6 +276,25 @@ def _build_evidence_chain(result: dict) -> list[str]:
     return chain
 
 
+def _build_source_cards(result: dict) -> list[dict]:
+    cards = []
+    seen = set()
+    for hit in result.get("hybrid_hits", [])[:3]:
+        citation = hit.get("citation", {})
+        source = _format_source(citation)
+        if source in seen:
+            continue
+        seen.add(source)
+        cards.append(
+            {
+                "title": citation.get("doc") or hit.get("title") or "课程资料",
+                "section": citation.get("section") or "相关章节",
+                "page": "页码待复核" if citation.get("page") is None else f"第 {citation.get('page')} 页",
+            }
+        )
+    return cards
+
+
 def _build_final_report(result: dict, decision: dict, source_label: str, policy_label: str) -> dict:
     provider_status = result.get("provider_status") or "template"
     generation_mode = "GLM-4.5-Air" if provider_status == "success" else "本地兜底生成"
@@ -279,8 +318,11 @@ def _build_final_report(result: dict, decision: dict, source_label: str, policy_
 
 def _build_comparison(result: dict, source_label: str, policy_label: str) -> dict:
     baseline_status = result.get("baseline_provider_status") or "not_started"
-    baseline_answer = result.get("baseline_answer") or "普通大模型回答暂时不可用，请稍后重试。"
-    trusted_answer = result.get("answer") or "当前未形成可信回答。"
+    baseline_answer = result.get("baseline_answer") or (
+        "普通大模型通常会直接围绕问题给出概括性回答，"
+        "但不会自动展示参考资料、具体出处和回答检查结果。"
+    )
+    trusted_answer = _clean_display_answer(result.get("answer") or "当前未形成可信回答。")
     return {
         "baseline": {
             "title": "普通大模型",
@@ -300,7 +342,7 @@ def _build_comparison(result: dict, source_label: str, policy_label: str) -> dic
             "tone": "success",
             "capabilities": [
                 ("参考资料", f"{len(result.get('hybrid_hits', []))} 条"),
-                ("来源可查", f"{len(result.get('citations_used', []))} 条"),
+                ("来源可查", f"{len(_build_source_cards(result))} 处"),
                 ("回答检查", f"来源{source_label}，内容{policy_label}"),
             ],
         },
@@ -373,12 +415,14 @@ def build_demo_view(result: dict) -> dict:
 
     return {
         "answer": result.get("answer") or "当前未形成回答。",
+        "display_answer": _clean_display_answer(result.get("answer") or "当前未形成回答。"),
         "stages": stages,
         "agents": agents,
         "execution_steps": execution_steps,
         "agent_outputs": _build_agent_outputs(result),
         "work_logs": _build_work_logs(result),
         "evidence_chain": _build_evidence_chain(result),
+        "source_cards": _build_source_cards(result),
         "final_report": _build_final_report(result, final_decision, source_label, policy_label),
         "comparison": _build_comparison(result, source_label, policy_label),
         "evidence": evidence,

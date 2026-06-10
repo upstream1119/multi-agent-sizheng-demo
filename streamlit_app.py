@@ -319,6 +319,41 @@ st.markdown(
         line-height: 1.65;
     }
 
+    .source-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .8rem;
+        margin: .85rem 0 1rem;
+    }
+
+    .source-card {
+        padding: .95rem 1rem;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(255,255,255,.78);
+        box-shadow: 0 6px 18px rgba(73,45,32,.04);
+    }
+
+    .source-card-title {
+        color: var(--red-deep);
+        font-weight: 760;
+        line-height: 1.5;
+    }
+
+    .source-card-section {
+        margin-top: .35rem;
+        color: var(--muted);
+        font-size: .84rem;
+        line-height: 1.55;
+    }
+
+    .source-card-page {
+        margin-top: .5rem;
+        color: var(--ink);
+        font-size: .88rem;
+        font-weight: 720;
+    }
+
     .section-title {
         margin: 2.2rem 0 .3rem;
         color: var(--red-deep);
@@ -700,6 +735,7 @@ st.markdown(
         .execution-meta { grid-template-columns: 1fr; }
         .capability-grid { grid-template-columns: 1fr; }
         .benefit-grid { grid-template-columns: 1fr; }
+        .source-card-grid { grid-template-columns: 1fr; }
     }
     </style>
     """,
@@ -803,6 +839,23 @@ def render_evidence_chain(chain: list[str]) -> None:
     )
 
 
+def render_source_cards(cards: list[dict]) -> None:
+    if not cards:
+        st.info("当前资料库中没有找到足够内容，请尝试页面中的示例问题。")
+        return
+    card_html = "".join(
+        (
+            '<div class="source-card">'
+            f'<div class="source-card-title">{html.escape(item["title"])}</div>'
+            f'<div class="source-card-section">{html.escape(item["section"])}</div>'
+            f'<div class="source-card-page">{html.escape(item["page"])}</div>'
+            "</div>"
+        )
+        for item in cards
+    )
+    st.markdown(f'<div class="source-card-grid">{card_html}</div>', unsafe_allow_html=True)
+
+
 def render_final_report(report: dict) -> None:
     rows = [
         ("生成方式", report["generation_mode"]),
@@ -868,6 +921,7 @@ def ensure_view_defaults(view: dict) -> dict:
         {"label": "待确认", "tone": "neutral", "reason": "系统尚未形成最终结论。"},
     )
     view.setdefault("answer", "当前未形成回答。")
+    view.setdefault("display_answer", view["answer"].split("引用依据：", 1)[0].strip())
     view.setdefault("decision", decision)
     view.setdefault("agents", [])
     view.setdefault("execution_steps", [])
@@ -888,6 +942,17 @@ def ensure_view_defaults(view: dict) -> dict:
         [item.get("source", "") for item in view["evidence"] if item.get("source")],
     )
     view.setdefault(
+        "source_cards",
+        [
+            {
+                "title": item.get("title", "课程资料"),
+                "section": item.get("source", "相关章节"),
+                "page": "可查看资料原文",
+            }
+            for item in view["evidence"][:3]
+        ],
+    )
+    view.setdefault(
         "final_report",
         {
             "question": st.session_state.get("last_question", "当前问题待确认"),
@@ -906,7 +971,10 @@ def ensure_view_defaults(view: dict) -> dict:
         {
             "baseline": {
                 "title": "普通大模型",
-                "answer": "请重新点击生成，以获得普通大模型的对比回答。",
+                "answer": (
+                    "普通大模型通常会直接围绕问题给出概括性回答，"
+                    "但不会自动展示参考资料、具体出处和回答检查结果。"
+                ),
                 "status": "等待回答",
                 "tone": "neutral",
                 "capabilities": [
@@ -917,12 +985,12 @@ def ensure_view_defaults(view: dict) -> dict:
             },
             "trusted": {
                 "title": "本系统",
-                "answer": view["answer"],
+                "answer": view.get("display_answer", view["answer"]),
                 "status": "资料增强",
                 "tone": "success",
                 "capabilities": [
                     ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
-                    ("来源可查", f'{view["task_report"].get("citation_count", 0)} 条'),
+                    ("来源可查", f'{len(view.get("source_cards", []))} 处'),
                     (
                         "回答检查",
                         f'来源{view["task_report"].get("source_status", "待确认")}，'
@@ -943,7 +1011,7 @@ def ensure_view_defaults(view: dict) -> dict:
     trusted_comparison["title"] = "本系统"
     trusted_comparison["capabilities"] = [
         ("参考资料", f'{view["task_report"].get("evidence_count", 0)} 条'),
-        ("来源可查", f'{view["task_report"].get("citation_count", 0)} 条'),
+        ("来源可查", f'{len(view.get("source_cards", []))} 处'),
         (
             "回答检查",
             f'来源{view["task_report"].get("source_status", "待确认")}，'
@@ -1083,15 +1151,13 @@ def render_result(view: dict) -> None:
     render_benefits()
 
     st.markdown('<div class="section-title">参考资料</div>', unsafe_allow_html=True)
-    render_evidence_chain(view["evidence_chain"])
+    render_source_cards(view.get("source_cards", []))
     if view["evidence"]:
         with st.expander("查看资料原文", expanded=False):
             for index, evidence in enumerate(view["evidence"], start=1):
                 st.markdown(f"**资料 {index}：{evidence['title']}**")
                 st.markdown(evidence["text"])
                 st.caption(evidence["source"])
-    else:
-        st.info("当前资料库中没有找到足够内容，请尝试页面中的示例问题。")
 
 
 st.markdown(

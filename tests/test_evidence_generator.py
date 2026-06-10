@@ -130,5 +130,5 @@ def test_baseline_answer_reports_provider_failure(monkeypatch):
 
     result = generate_baseline_answer("三湾改编有什么意义？")
 
-    assert result["answer"] == "普通大模型回答暂时不可用，请稍后重试。"
+    assert "不会自动展示参考资料" in result["answer"]
     assert result["provider_status"] == "api_error"

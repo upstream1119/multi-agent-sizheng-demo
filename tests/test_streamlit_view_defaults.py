@@ -34,4 +34,6 @@ def test_ensure_view_defaults_handles_legacy_session_view():
     assert view["agent_outputs"] == []
     assert view["execution_steps"] == []
     assert view["comparison"]["baseline"]["status"] == "等待回答"
+    assert "重新点击" not in view["comparison"]["baseline"]["answer"]
     assert view["comparison"]["trusted"]["answer"] == "旧 session 中缓存的回答。"
+    assert view["source_cards"][0]["page"] == "可查看资料原文"
