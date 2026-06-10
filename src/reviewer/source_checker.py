@@ -7,6 +7,20 @@ WARNING_STATUS = "warning"
 FAIL_STATUS = "fail"
 
 
+def _substantive_paragraphs(answer: str) -> list[str]:
+    paragraphs = []
+    for raw_paragraph in re.split(r"\n\s*\n", answer):
+        paragraph = raw_paragraph.strip()
+        if len(paragraph) < 12:
+            continue
+        if paragraph.startswith(("引用依据：", "引用来源：")):
+            continue
+        if paragraph.startswith("以上回答仅依据当前检索到的证据生成"):
+            continue
+        paragraphs.append(paragraph)
+    return paragraphs
+
+
 def check_answer_sources(answer: str, citations_used: list[dict]) -> dict:
     """
     溯源审查智能体最小原型：检查生成回答是否有 citation 支撑。
@@ -24,12 +38,7 @@ def check_answer_sources(answer: str, citations_used: list[dict]) -> dict:
     if not inline_citations:
         issues.append("回答正文没有标注证据编号，如 [1]。")
     else:
-        substantive_paragraphs = [
-            paragraph.strip()
-            for paragraph in re.split(r"\n\s*\n", answer)
-            if len(paragraph.strip()) >= 12
-            and not paragraph.strip().startswith(("引用依据：", "引用来源："))
-        ]
+        substantive_paragraphs = _substantive_paragraphs(answer)
         for index, paragraph in enumerate(substantive_paragraphs, start=1):
             if not re.search(r"\[\d+\]", paragraph):
                 issues.append(f"第 {index} 段缺少来源标注。")

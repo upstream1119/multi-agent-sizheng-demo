@@ -96,6 +96,21 @@ def test_retrieve_reports_workflow_progress_in_order(monkeypatch):
     ]
 
 
+def test_default_example_passes_review_in_template_fallback(monkeypatch):
+    monkeypatch.setenv("DACHUANG_RETRIEVE_MODE", "mock")
+    monkeypatch.setenv("DACHUANG_LOCAL_MOCK_ACK", "1")
+    monkeypatch.setenv("DACHUANG_GENERATOR_MODE", "llm")
+    monkeypatch.setenv("DACHUANG_LLM_PROVIDER", "zhipu")
+    monkeypatch.delenv("ZHIPUAI_API_KEY", raising=False)
+
+    result = retrieve("中国共产党思想政治教育史为什么重要？")
+
+    assert result["provider_status"] == "missing_api_key"
+    assert result["source_check"]["status"] == "pass"
+    assert result["policy_check"]["status"] == "pass"
+    assert result["final_decision"]["status"] == "approved"
+
+
 @pytest.mark.parametrize(
     ("question", "expected_top_hit"),
     [

@@ -196,18 +196,6 @@ def check_policy_risk(answer: str, citations_used: list[dict], source_check: dic
             "请专家或研究生确认引用证据是否足以支撑回答。",
         )
 
-    if "仅依据当前检索到的证据" not in answer:
-        _add_issue(
-            issues,
-            risk_types,
-            review_items,
-            "missing_scope_statement",
-            "回答缺少证据边界说明，可能让使用者误以为结论已经完全定稿。",
-            SEVERITY_MEDIUM,
-            "补充“仅依据当前检索证据生成”的限定语。",
-            "请专家判断该回答是否容易被误解为无条件定论。",
-        )
-
     absolute_claims = _contains_any(answer, ABSOLUTE_CLAIM_PHRASES)
     if absolute_claims:
         _add_issue(

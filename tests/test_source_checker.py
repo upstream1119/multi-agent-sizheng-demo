@@ -42,6 +42,20 @@ def test_source_checker_reports_specific_uncited_paragraph():
     assert "第 2 段缺少来源标注" in result["issues"][0]
 
 
+def test_source_checker_ignores_reference_block_and_system_footer():
+    answer = (
+        "根据资料，思想政治教育发挥了重要作用。[1]\n\n"
+        "引用来源：\n"
+        "1. 绪论：来源：《中国共产党思想政治教育史》，绪论，PDF 页码 15\n\n"
+        "以上回答仅依据当前检索到的证据生成，系统已同步给出来源核验与内容规范初筛结果。"
+    )
+
+    result = check_answer_sources(answer, [_citation(1)])
+
+    assert result["status"] == "pass"
+    assert result["issues"] == []
+
+
 def test_source_checker_rejects_unknown_inline_citation():
     result = check_answer_sources(
         "资料表明，这一时期重视理论教育与实践结合。[2]",
