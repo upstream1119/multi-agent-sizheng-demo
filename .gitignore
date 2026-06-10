@@ -5,3 +5,4 @@ __pycache__/
 .playwright-cli/
 streamlit.stdout.log
 streamlit.stderr.log
+outputs/

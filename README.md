@@ -38,6 +38,22 @@ ZHIPUAI_API_KEY = "你的智谱 API Key"
 
 首次访问若应用正在唤醒，请稍候片刻。建议优先体验页面中的三个示例问题，再使用自由输入观察证据不足时的保守处理。
 
+## 最小评测
+
+项目内置一个小规模评测入口，用于比较普通大模型、单路检索、混合检索和完整多智能体流程。
+
+```powershell
+$env:ZHIPUAI_API_KEY="你的智谱 API Key"  # 可选；未配置时会使用本地兜底回答
+python -m src.evaluation.demo_eval --limit 10
+```
+
+结果会输出到 `outputs/eval/`：
+
+- `demo_eval_时间戳.csv`：逐题逐系统指标，预留专家盲评打分列。
+- `demo_eval_时间戳_summary.json`：各系统自动指标均值。
+
+当前自动指标包括 `retrieval_hit_at_3`、`citation_count`、`source_pass`、`policy_pass`、`final_approved`、`unsupported_risk` 和 `answer_length`。这些指标用于 smoke test 和消融设计，不等同于最终专家评测结论。
+
 ## 使用边界
 
 本项目是阶段性教学演示系统。回答仅依据当前固定知识库生成，规则型审查不替代人工复核与专业判断。
