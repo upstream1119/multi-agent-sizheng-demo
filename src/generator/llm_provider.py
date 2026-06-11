@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from http.client import RemoteDisconnected
 import json
 import os
 import time
@@ -72,7 +73,15 @@ class ZhipuGLMProvider:
                 with urlopen(request, timeout=self.timeout_seconds) as response:
                     data = json.loads(response.read().decode("utf-8"))
                 break
-            except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeEncodeError):
+            except (
+                HTTPError,
+                URLError,
+                TimeoutError,
+                json.JSONDecodeError,
+                UnicodeEncodeError,
+                RemoteDisconnected,
+                OSError,
+            ):
                 if attempt == self.max_retries - 1:
                     return LLMGenerationResult(
                         text="",

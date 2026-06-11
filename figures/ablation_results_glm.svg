@@ -27,12 +27,12 @@
 <text x="238" y="369" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#B85C4B" text-anchor="start">0.0%</text>
 <text x="214" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">去掉溯源审查</text>
 <rect x="228" y="406" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="228" y="406" width="298.2" height="26" rx="8" fill="#B85C4B"/>
-<text x="536.2333333333333" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#B85C4B" text-anchor="start">76.7%</text>
+<rect x="228" y="406" width="350.1" height="26" rx="8" fill="#B85C4B"/>
+<text x="588.1" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#B85C4B" text-anchor="start">90.0%</text>
 <text x="214" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">去掉内容复核</text>
 <rect x="228" y="461" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="228" y="461" width="337.1" height="26" rx="8" fill="#B85C4B"/>
-<text x="575.1333333333333" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#B85C4B" text-anchor="start">86.7%</text>
+<rect x="228" y="461" width="389.0" height="26" rx="8" fill="#B85C4B"/>
+<text x="627.0" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#B85C4B" text-anchor="start">100.0%</text>
 <text x="214" y="534" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="600" fill="#3D3935" text-anchor="end">完整多智能体系统</text>
 <rect x="228" y="516" width="389" height="26" rx="8" fill="#F1EEE9"/>
 <text x="238" y="534" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#387A5A" text-anchor="start">0.0%</text>
@@ -54,23 +54,23 @@
 <text x="883" y="259" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">0.0%</text>
 <text x="859" y="314" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">混合检索增强</text>
 <rect x="873" y="296" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="873" y="296" width="328.5" height="26" rx="8" fill="#7699B8"/>
-<text x="1211.4897533333333" y="314" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">84.4%</text>
+<rect x="873" y="296" width="389.0" height="26" rx="8" fill="#7699B8"/>
+<text x="1272.0" y="314" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">100.0%</text>
 <text x="859" y="369" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">去掉引用约束</text>
 <rect x="873" y="351" width="389" height="26" rx="8" fill="#F1EEE9"/>
 <text x="883" y="369" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">0.0%</text>
 <text x="859" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">去掉溯源审查</text>
 <rect x="873" y="406" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="873" y="406" width="328.5" height="26" rx="8" fill="#7699B8"/>
-<text x="1211.4897533333333" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">84.4%</text>
+<rect x="873" y="406" width="389.0" height="26" rx="8" fill="#7699B8"/>
+<text x="1272.0" y="424" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">100.0%</text>
 <text x="859" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#3D3935" text-anchor="end">去掉内容复核</text>
 <rect x="873" y="461" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="873" y="461" width="328.5" height="26" rx="8" fill="#7699B8"/>
-<text x="1211.4897533333333" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">84.4%</text>
+<rect x="873" y="461" width="389.0" height="26" rx="8" fill="#7699B8"/>
+<text x="1272.0" y="479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#7699B8" text-anchor="start">100.0%</text>
 <text x="859" y="534" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="600" fill="#3D3935" text-anchor="end">完整多智能体系统</text>
 <rect x="873" y="516" width="389" height="26" rx="8" fill="#F1EEE9"/>
-<rect x="873" y="516" width="337.1" height="26" rx="8" fill="#5E8C6A"/>
-<text x="1220.1333333333332" y="534" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#5E8C6A" text-anchor="start">86.7%</text>
+<rect x="873" y="516" width="389.0" height="26" rx="8" fill="#5E8C6A"/>
+<text x="1272.0" y="534" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#5E8C6A" text-anchor="start">100.0%</text>
 <text x="60" y="657" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#6E6862" text-anchor="start">评测设置：30 道课程问答题，GLM-4.5-Air；图中所选系统共 180 次调用成功。</text>
 <text x="60" y="684" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="13" font-weight="400" fill="#8A514B" text-anchor="start">说明：自动指标用于初步机制验证，不替代教师或专家盲评，也不代表统计显著性结论。</text>
 </svg>

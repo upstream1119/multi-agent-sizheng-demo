@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
@@ -22,7 +23,7 @@ TEAM_MODE = "team"
 MOCK_MODE = "mock"
 VECTOR_TOP_K = 3
 GRAPH_TOP_K = 3
-ALPHA = 0.7
+ALPHA = 0.75
 VECTOR_WEIGHT = ALPHA
 GRAPH_WEIGHT = 1 - ALPHA
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +54,25 @@ MOCK_ENTITY_MAP = {
 
 def _count_keyword_hits(keywords: list[str], content: str) -> int:
     return sum(1 for keyword in keywords if keyword and keyword in content)
+
+
+def _character_bigrams(text: str) -> set[str]:
+    normalized = "".join(re.findall(r"[\u4e00-\u9fffA-Za-z0-9]", text or ""))
+    return {
+        normalized[index:index + 2]
+        for index in range(max(0, len(normalized) - 1))
+    }
+
+
+def _text_overlap_score(query: str, content: str) -> float:
+    query_bigrams = _character_bigrams(query)
+    content_bigrams = _character_bigrams(content)
+    if not query_bigrams or not content_bigrams:
+        return 0.0
+    return len(query_bigrams & content_bigrams) / min(
+        len(query_bigrams),
+        len(content_bigrams),
+    )
 
 
 @lru_cache(maxsize=1)
@@ -111,28 +131,17 @@ def extract_query_entities(query: str) -> list[str]:
 
 
 def _score_vector_hit(query: str, query_entities: list[str], item: dict) -> float:
-    score = 0.0
-    entities = item.get("entities", [])
     text = item.get("text", "")
     title = item.get("title", "")
     citation_section = item.get("citation", {}).get("section", "")
-    tags = item.get("tags", [])
-    topic = item.get("topic", "")
-
-    if any(entity in entities for entity in query_entities):
-        score += 0.55
-    text_hits = _count_keyword_hits(query_entities, text)
-    title_hits = _count_keyword_hits(query_entities, title)
-    section_hits = _count_keyword_hits(query_entities, citation_section)
-    score += min(text_hits * 0.18, 0.36)
-    score += min(title_hits * 0.2, 0.4)
-    score += min(section_hits * 0.12, 0.24)
-    if any(tag in query for tag in tags):
-        score += 0.1
-    if topic and topic in query:
-        score += 0.1
-    if query and query in text:
-        score += 0.15
+    title_overlap = _text_overlap_score(query, title)
+    section_overlap = _text_overlap_score(query, citation_section)
+    text_overlap = _text_overlap_score(query, text)
+    score = (
+        title_overlap * 0.65
+        + section_overlap * 0.25
+        + text_overlap * 0.25
+    )
     return min(score, 0.99)
 
 

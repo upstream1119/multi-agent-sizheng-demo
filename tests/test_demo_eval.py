@@ -2,6 +2,13 @@ import csv
 import json
 
 from src.evaluation.demo_eval import load_questions, run_evaluation
+from src.retriever.hybrid_retriever import (
+    _load_demo_knowledge_base,
+    extract_query_entities,
+    fuse_results,
+    retrieve_graph,
+    retrieve_vector,
+)
 
 
 def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
@@ -69,3 +76,18 @@ def test_demo_question_set_has_enough_grounded_items():
     assert len({question["id"] for question in questions}) == len(questions)
     assert all(question.get("expected_hit_ids") for question in questions)
     assert all(question.get("reference_note") for question in questions)
+
+
+def test_extended_question_set_hybrid_retrieval_hits_gold_at_3():
+    questions = load_questions("eval/questions_demo.jsonl")
+    knowledge_base = _load_demo_knowledge_base()
+
+    for question in questions:
+        query = question["question"]
+        query_entities = extract_query_entities(query)
+        vector_hits = retrieve_vector(query, query_entities)
+        graph_hits = retrieve_graph(query_entities)
+        hybrid_hits = fuse_results(vector_hits, graph_hits, knowledge_base)
+        retrieved_ids = {hit["id"] for hit in hybrid_hits[:3]}
+
+        assert retrieved_ids & set(question["expected_hit_ids"]), question["id"]

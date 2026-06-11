@@ -114,7 +114,7 @@ def test_default_example_passes_review_in_template_fallback(monkeypatch):
 @pytest.mark.parametrize(
     ("question", "expected_top_hit"),
     [
-        ("中国共产党思想政治教育史为什么重要？", "chunk_szzjys_demo_001"),
+        ("中国共产党思想政治教育史为什么重要？", "chunk_szzjys_demo_002"),
         ("三湾改编对人民军队建设有什么意义？", "chunk_szzjys_demo_012"),
         ("抗日战争时期党的干部教育为什么重要？", "chunk_szzjys_demo_022"),
     ],
