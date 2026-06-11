@@ -70,6 +70,18 @@ python -m src.evaluation.demo_eval --limit 10
 
 新增指标 `risky_output_rate` 表示系统在存在未审查或未通过风险时仍然输出的比例，主要用于观察审查与门控模块的消融效果。
 
+## 消融结果可视化
+
+可以基于逐题 CSV 生成无需额外绘图库的 SVG 对比图：
+
+```powershell
+python scripts/plot_ablation_results.py `
+  --input outputs/eval/demo_eval_20260611_110329.csv `
+  --output figures/ablation_results_glm.svg
+```
+
+图表重点展示风险输出率与回答可溯源率，适合在网页、汇报材料或 PPT 中使用。自动指标只用于初步机制验证，不替代教师或专家盲评。
+
 若需要组织人工盲评，可参考 `eval/expert_rubric.md`。CSV 中已预留 `expert_fact_score`、`expert_style_score`、`expert_policy_score` 和 `expert_preference` 列，可直接交由老师或专家补评分。
 
 ## 使用边界
