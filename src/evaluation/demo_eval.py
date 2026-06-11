@@ -2,6 +2,7 @@ import argparse
 import csv
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -37,12 +38,20 @@ CSV_FIELDS = [
     "expected_hit_ids",
     "retrieved_hit_ids",
     "retrieval_hit_at_3",
+    "expected_hit_rank",
     "citation_count",
+    "citation_precision_proxy",
+    "grounded_paragraph_rate",
+    "ungrounded_paragraph_count",
     "source_pass",
     "policy_pass",
     "final_approved",
     "unsupported_risk",
+    "source_status",
+    "policy_status",
+    "final_status",
     "answer_length",
+    "answer_preview",
     "provider_status",
     "expert_fact_score",
     "expert_style_score",
@@ -69,8 +78,59 @@ def _hit_at_3(expected_hit_ids: list[str], retrieved_hit_ids: list[str]) -> int:
     return int(bool(set(expected_hit_ids) & set(retrieved_hit_ids[:3])))
 
 
+def _expected_hit_rank(expected_hit_ids: list[str], retrieved_hit_ids: list[str]) -> int:
+    expected = set(expected_hit_ids)
+    for index, hit_id in enumerate(retrieved_hit_ids, start=1):
+        if hit_id in expected:
+            return index
+    return 0
+
+
 def _join_ids(ids: list[str]) -> str:
     return "|".join(ids)
+
+
+def _substantive_paragraphs(answer: str) -> list[str]:
+    paragraphs = []
+    for raw_paragraph in re.split(r"\n\s*\n", answer or ""):
+        paragraph = raw_paragraph.strip()
+        if len(paragraph) < 12:
+            continue
+        if paragraph.startswith(("引用依据：", "引用来源：")):
+            continue
+        if paragraph.startswith("以上回答仅依据当前检索到的证据生成"):
+            continue
+        paragraphs.append(paragraph)
+    return paragraphs
+
+
+def _grounding_metrics(answer: str, citation_count: int) -> dict:
+    paragraphs = _substantive_paragraphs(answer)
+    grounded_count = sum(1 for paragraph in paragraphs if re.search(r"\[\d+\]", paragraph))
+    ungrounded_count = max(len(paragraphs) - grounded_count, 0)
+    inline_citations = [int(index) for index in re.findall(r"\[(\d+)\]", answer or "")]
+    invalid_citation_count = sum(
+        1 for index in inline_citations if index < 1 or index > citation_count
+    )
+    if not paragraphs:
+        grounded_rate = 0.0
+    else:
+        grounded_rate = round(grounded_count / len(paragraphs), 4)
+    citation_precision = 1.0 if inline_citations and invalid_citation_count == 0 else 0.0
+    if citation_count == 0:
+        citation_precision = 0.0
+    return {
+        "citation_precision_proxy": citation_precision,
+        "grounded_paragraph_rate": grounded_rate,
+        "ungrounded_paragraph_count": ungrounded_count,
+    }
+
+
+def _answer_preview(answer: str, limit: int = 80) -> str:
+    normalized = " ".join((answer or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[:limit].rstrip("，。；、 ") + "..."
 
 
 def _base_row(question: dict, system: str, hits: list[dict], answer: str) -> dict:
@@ -84,7 +144,9 @@ def _base_row(question: dict, system: str, hits: list[dict], answer: str) -> dic
         "expected_hit_ids": _join_ids(expected_ids),
         "retrieved_hit_ids": _join_ids(retrieved_ids),
         "retrieval_hit_at_3": _hit_at_3(expected_ids, retrieved_ids),
+        "expected_hit_rank": _expected_hit_rank(expected_ids, retrieved_ids),
         "answer_length": len(answer or ""),
+        "answer_preview": _answer_preview(answer),
         "expert_fact_score": "",
         "expert_style_score": "",
         "expert_policy_score": "",
@@ -100,9 +162,11 @@ def _review_row(question: dict, system: str, hits: list[dict], generated: dict) 
     final_decision = build_final_decision(source_check, policy_check)
 
     row = _base_row(question, system, hits, answer)
+    grounding = _grounding_metrics(answer, len(citations_used))
     row.update(
         {
             "citation_count": len(citations_used),
+            **grounding,
             "source_pass": int(source_check.get("status") == "pass"),
             "policy_pass": int(policy_check.get("status") == "pass"),
             "final_approved": int(final_decision.get("status") == "approved"),
@@ -110,6 +174,9 @@ def _review_row(question: dict, system: str, hits: list[dict], generated: dict) 
                 source_check.get("status") != "pass"
                 or policy_check.get("review_required", False)
             ),
+            "source_status": source_check.get("status", ""),
+            "policy_status": policy_check.get("status", ""),
+            "final_status": final_decision.get("status", ""),
             "provider_status": generated.get("provider_status", ""),
         }
     )
@@ -122,10 +189,14 @@ def _direct_llm_row(question: dict) -> dict:
     row.update(
         {
             "citation_count": 0,
+            **_grounding_metrics(baseline.get("answer", ""), 0),
             "source_pass": 0,
             "policy_pass": 0,
             "final_approved": 0,
             "unsupported_risk": 1,
+            "source_status": "not_checked",
+            "policy_status": "not_checked",
+            "final_status": "not_approved",
             "provider_status": baseline.get("provider_status", ""),
         }
     )
@@ -174,6 +245,10 @@ def evaluate_question(question: dict) -> list[dict]:
     full_row.update(
         {
             "citation_count": len(full_result.get("citations_used", [])),
+            **_grounding_metrics(
+                full_result.get("answer", ""),
+                len(full_result.get("citations_used", [])),
+            ),
             "source_pass": int(full_result.get("source_check", {}).get("status") == "pass"),
             "policy_pass": int(full_result.get("policy_check", {}).get("status") == "pass"),
             "final_approved": int(
@@ -183,6 +258,9 @@ def evaluate_question(question: dict) -> list[dict]:
                 full_result.get("source_check", {}).get("status") != "pass"
                 or full_result.get("policy_check", {}).get("review_required", False)
             ),
+            "source_status": full_result.get("source_check", {}).get("status", ""),
+            "policy_status": full_result.get("policy_check", {}).get("status", ""),
+            "final_status": full_result.get("final_decision", {}).get("status", ""),
             "provider_status": full_result.get("provider_status", ""),
         }
     )
@@ -216,11 +294,35 @@ def _summarize(rows: list[dict], question_count: int) -> dict:
                 sum(int(row["unsupported_risk"]) for row in system_rows) / count,
                 4,
             ),
+            "grounded_paragraph_rate": round(
+                sum(float(row["grounded_paragraph_rate"]) for row in system_rows) / count,
+                4,
+            ),
+            "citation_precision_proxy": round(
+                sum(float(row["citation_precision_proxy"]) for row in system_rows) / count,
+                4,
+            ),
         }
+    failed_cases = [
+        {
+            "question_id": row["question_id"],
+            "system": row["system"],
+            "retrieval_hit_at_3": int(row["retrieval_hit_at_3"]),
+            "source_status": row["source_status"],
+            "policy_status": row["policy_status"],
+            "final_status": row["final_status"],
+        }
+        for row in rows
+        if int(row["retrieval_hit_at_3"]) == 0
+        or row["source_status"] != "pass"
+        or row["policy_status"] != "pass"
+        or row["final_status"] != "approved"
+    ]
     return {
         "question_count": question_count,
         "systems": SYSTEMS,
         "metrics": by_system,
+        "failed_cases": failed_cases,
         "notes": (
             "expert_* columns are intentionally left blank for later blind review; "
             "automatic metrics are smoke-test indicators, not final academic claims."

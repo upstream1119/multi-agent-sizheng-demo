@@ -36,4 +36,17 @@ def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
     assert len(rows) == 10
     assert rows[0]["question_id"] == "q001"
     assert "retrieval_hit_at_3" in rows[0]
+    assert "expected_hit_rank" in rows[0]
+    assert "citation_precision_proxy" in rows[0]
+    assert "grounded_paragraph_rate" in rows[0]
+    assert "ungrounded_paragraph_count" in rows[0]
+    assert "source_status" in rows[0]
+    assert "policy_status" in rows[0]
+    assert "final_status" in rows[0]
+    assert "answer_preview" in rows[0]
     assert "expert_fact_score" in rows[0]
+
+    full_rows = [row for row in rows if row["system"] == "full_system"]
+    assert any(float(row["grounded_paragraph_rate"]) >= 0 for row in full_rows)
+    assert "grounded_paragraph_rate" in summary["metrics"]["full_system"]
+    assert "failed_cases" in summary

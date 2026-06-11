@@ -54,6 +54,8 @@ python -m src.evaluation.demo_eval --limit 10
 
 当前自动指标包括 `retrieval_hit_at_3`、`citation_count`、`source_pass`、`policy_pass`、`final_approved`、`unsupported_risk` 和 `answer_length`。这些指标用于 smoke test 和消融设计，不等同于最终专家评测结论。
 
+若需要组织人工盲评，可参考 `eval/expert_rubric.md`。CSV 中已预留 `expert_fact_score`、`expert_style_score`、`expert_policy_score` 和 `expert_preference` 列，可直接交由老师或专家补评分。
+
 ## 使用边界
 
 本项目是阶段性教学演示系统。回答仅依据当前固定知识库生成，规则型审查不替代人工复核与专业判断。
