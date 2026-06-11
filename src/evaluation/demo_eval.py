@@ -28,6 +28,10 @@ SYSTEMS = [
     "vector_rag",
     "graph_rag",
     "hybrid_rag",
+    "hybrid_no_citation_enforcement",
+    "hybrid_no_source_review",
+    "hybrid_no_policy_review",
+    "hybrid_no_trust_gate",
     "full_system",
 ]
 CSV_FIELDS = [
@@ -47,6 +51,11 @@ CSV_FIELDS = [
     "policy_pass",
     "final_approved",
     "unsupported_risk",
+    "risky_output",
+    "source_checked",
+    "policy_checked",
+    "trust_gate_enabled",
+    "citation_enforcement_enabled",
     "source_status",
     "policy_status",
     "final_status",
@@ -133,6 +142,47 @@ def _answer_preview(answer: str, limit: int = 80) -> str:
     return normalized[:limit].rstrip("，。；、 ") + "..."
 
 
+def _strip_inline_citations(answer: str) -> str:
+    return re.sub(r"\[\d+\]", "", answer or "").strip()
+
+
+def _assumed_pass_source_check(citations_used: list[dict]) -> dict:
+    return {
+        "status": "pass",
+        "issues": [],
+        "checked_citation_count": len(citations_used),
+    }
+
+
+def _skipped_source_check(citations_used: list[dict]) -> dict:
+    return {
+        "status": "skipped",
+        "issues": ["source review skipped for ablation"],
+        "checked_citation_count": len(citations_used),
+    }
+
+
+def _skipped_policy_check() -> dict:
+    return {
+        "status": "skipped",
+        "risk_types": [],
+        "issues": ["policy review skipped for ablation"],
+        "review_required": False,
+        "max_severity": "none",
+        "review_items": [],
+        "suggestion": "",
+    }
+
+
+def _ungated_final_decision(answer: str) -> dict:
+    return {
+        "status": "output_without_gate" if answer else "no_answer",
+        "can_output": bool(answer),
+        "review_required": False,
+        "reason": "trust gate skipped for ablation",
+    }
+
+
 def _base_row(question: dict, system: str, hits: list[dict], answer: str) -> dict:
     expected_ids = question.get("expected_hit_ids", [])
     retrieved_ids = [hit.get("id", "") for hit in hits[:3]]
@@ -154,15 +204,49 @@ def _base_row(question: dict, system: str, hits: list[dict], answer: str) -> dic
     }
 
 
-def _review_row(question: dict, system: str, hits: list[dict], generated: dict) -> dict:
+def _review_row(
+    question: dict,
+    system: str,
+    hits: list[dict],
+    generated: dict,
+    *,
+    source_checked: bool = True,
+    policy_checked: bool = True,
+    trust_gate_enabled: bool = True,
+    citation_enforcement_enabled: bool = True,
+) -> dict:
     answer = generated.get("answer", "")
+    if not citation_enforcement_enabled:
+        answer = _strip_inline_citations(answer)
     citations_used = generated.get("citations_used", [])
-    source_check = check_answer_sources(answer, citations_used)
-    policy_check = check_policy_risk(answer, citations_used, source_check)
-    final_decision = build_final_decision(source_check, policy_check)
+    source_check = (
+        check_answer_sources(answer, citations_used)
+        if source_checked
+        else _skipped_source_check(citations_used)
+    )
+    source_check_for_policy = (
+        source_check if source_checked else _assumed_pass_source_check(citations_used)
+    )
+    policy_check = (
+        check_policy_risk(answer, citations_used, source_check_for_policy)
+        if policy_checked
+        else _skipped_policy_check()
+    )
+    final_decision = (
+        build_final_decision(source_check_for_policy, policy_check)
+        if trust_gate_enabled
+        else _ungated_final_decision(answer)
+    )
 
     row = _base_row(question, system, hits, answer)
     grounding = _grounding_metrics(answer, len(citations_used))
+    unsupported_risk = int(
+        (source_checked and source_check.get("status") != "pass")
+        or not source_checked
+        or (policy_checked and policy_check.get("review_required", False))
+        or not policy_checked
+    )
+    can_output = bool(final_decision.get("can_output")) or final_decision.get("status") == "approved"
     row.update(
         {
             "citation_count": len(citations_used),
@@ -170,10 +254,12 @@ def _review_row(question: dict, system: str, hits: list[dict], generated: dict) 
             "source_pass": int(source_check.get("status") == "pass"),
             "policy_pass": int(policy_check.get("status") == "pass"),
             "final_approved": int(final_decision.get("status") == "approved"),
-            "unsupported_risk": int(
-                source_check.get("status") != "pass"
-                or policy_check.get("review_required", False)
-            ),
+            "unsupported_risk": unsupported_risk,
+            "risky_output": int(can_output and unsupported_risk),
+            "source_checked": int(source_checked),
+            "policy_checked": int(policy_checked),
+            "trust_gate_enabled": int(trust_gate_enabled),
+            "citation_enforcement_enabled": int(citation_enforcement_enabled),
             "source_status": source_check.get("status", ""),
             "policy_status": policy_check.get("status", ""),
             "final_status": final_decision.get("status", ""),
@@ -194,6 +280,11 @@ def _direct_llm_row(question: dict) -> dict:
             "policy_pass": 0,
             "final_approved": 0,
             "unsupported_risk": 1,
+            "risky_output": 1,
+            "source_checked": 0,
+            "policy_checked": 0,
+            "trust_gate_enabled": 0,
+            "citation_enforcement_enabled": 0,
             "source_status": "not_checked",
             "policy_status": "not_checked",
             "final_status": "not_approved",
@@ -230,10 +321,51 @@ def evaluate_question(question: dict) -> list[dict]:
     rows = [_direct_llm_row(question)]
     retrieval_variants = _run_retrieval_variants(question)
 
+    generated_variants = {}
     for system in ["vector_rag", "graph_rag", "hybrid_rag"]:
         hits = retrieval_variants[system]
         generated = generate_answer(question["question"], hits)
+        generated_variants[system] = generated
         rows.append(_review_row(question, system, hits, generated))
+
+    hybrid_hits = retrieval_variants["hybrid_rag"]
+    hybrid_generated = generated_variants["hybrid_rag"]
+    rows.append(
+        _review_row(
+            question,
+            "hybrid_no_citation_enforcement",
+            hybrid_hits,
+            hybrid_generated,
+            citation_enforcement_enabled=False,
+        )
+    )
+    rows.append(
+        _review_row(
+            question,
+            "hybrid_no_source_review",
+            hybrid_hits,
+            hybrid_generated,
+            source_checked=False,
+        )
+    )
+    rows.append(
+        _review_row(
+            question,
+            "hybrid_no_policy_review",
+            hybrid_hits,
+            hybrid_generated,
+            policy_checked=False,
+        )
+    )
+    rows.append(
+        _review_row(
+            question,
+            "hybrid_no_trust_gate",
+            hybrid_hits,
+            hybrid_generated,
+            trust_gate_enabled=False,
+        )
+    )
 
     full_result = retrieve(question["question"])
     full_row = _base_row(
@@ -258,6 +390,17 @@ def evaluate_question(question: dict) -> list[dict]:
                 full_result.get("source_check", {}).get("status") != "pass"
                 or full_result.get("policy_check", {}).get("review_required", False)
             ),
+            "risky_output": int(
+                full_result.get("final_decision", {}).get("can_output", False)
+                and (
+                    full_result.get("source_check", {}).get("status") != "pass"
+                    or full_result.get("policy_check", {}).get("review_required", False)
+                )
+            ),
+            "source_checked": 1,
+            "policy_checked": 1,
+            "trust_gate_enabled": 1,
+            "citation_enforcement_enabled": 1,
             "source_status": full_result.get("source_check", {}).get("status", ""),
             "policy_status": full_result.get("policy_check", {}).get("status", ""),
             "final_status": full_result.get("final_decision", {}).get("status", ""),
@@ -292,6 +435,10 @@ def _summarize(rows: list[dict], question_count: int) -> dict:
             ),
             "unsupported_risk_rate": round(
                 sum(int(row["unsupported_risk"]) for row in system_rows) / count,
+                4,
+            ),
+            "risky_output_rate": round(
+                sum(int(row["risky_output"]) for row in system_rows) / count,
                 4,
             ),
             "grounded_paragraph_rate": round(

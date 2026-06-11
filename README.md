@@ -54,6 +54,22 @@ python -m src.evaluation.demo_eval --limit 10
 
 当前自动指标包括 `retrieval_hit_at_3`、`citation_count`、`source_pass`、`policy_pass`、`final_approved`、`unsupported_risk` 和 `answer_length`。这些指标用于 smoke test 和消融设计，不等同于最终专家评测结论。
 
+当前评测包含以下 baseline 与消融设置：
+
+| System | 含义 |
+|---|---|
+| `direct_llm` | 普通大模型直接回答，不检索、不引用、不审查。 |
+| `vector_rag` | 仅使用向量检索证据后生成回答。 |
+| `graph_rag` | 仅使用图谱实体检索证据后生成回答。 |
+| `hybrid_rag` | 融合向量检索与图谱检索，并进行引用、溯源与内容复核。 |
+| `hybrid_no_citation_enforcement` | 去掉回答中的 citation 强制标注，用于观察可溯源性下降。 |
+| `hybrid_no_source_review` | 去掉溯源审查智能体，用于观察未核验来源时的输出风险。 |
+| `hybrid_no_policy_review` | 去掉内容规范审查智能体，用于观察规则复核的贡献。 |
+| `hybrid_no_trust_gate` | 去掉最终 Trust Gate，用于观察有风险结果是否会被放行。 |
+| `full_system` | 完整受控多智能体流程：检索、生成、溯源审查、内容复核和最终门控。 |
+
+新增指标 `risky_output_rate` 表示系统在存在未审查或未通过风险时仍然输出的比例，主要用于观察审查与门控模块的消融效果。
+
 若需要组织人工盲评，可参考 `eval/expert_rubric.md`。CSV 中已预留 `expert_fact_score`、`expert_style_score`、`expert_policy_score` 和 `expert_preference` 列，可直接交由老师或专家补评分。
 
 ## 使用边界

@@ -27,13 +27,17 @@ def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
         "vector_rag",
         "graph_rag",
         "hybrid_rag",
+        "hybrid_no_citation_enforcement",
+        "hybrid_no_source_review",
+        "hybrid_no_policy_review",
+        "hybrid_no_trust_gate",
         "full_system",
     }
 
     with result["csv_path"].open("r", encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
 
-    assert len(rows) == 10
+    assert len(rows) == 18
     assert rows[0]["question_id"] == "q001"
     assert "retrieval_hit_at_3" in rows[0]
     assert "expected_hit_rank" in rows[0]
@@ -43,12 +47,18 @@ def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
     assert "source_status" in rows[0]
     assert "policy_status" in rows[0]
     assert "final_status" in rows[0]
+    assert "risky_output" in rows[0]
+    assert "source_checked" in rows[0]
+    assert "policy_checked" in rows[0]
+    assert "trust_gate_enabled" in rows[0]
+    assert "citation_enforcement_enabled" in rows[0]
     assert "answer_preview" in rows[0]
     assert "expert_fact_score" in rows[0]
 
     full_rows = [row for row in rows if row["system"] == "full_system"]
     assert any(float(row["grounded_paragraph_rate"]) >= 0 for row in full_rows)
     assert "grounded_paragraph_rate" in summary["metrics"]["full_system"]
+    assert "risky_output_rate" in summary["metrics"]["full_system"]
     assert "failed_cases" in summary
 
 
