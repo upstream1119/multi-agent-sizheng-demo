@@ -8,3 +8,23 @@
 {"id": "q008", "question": "大革命时期中国共产党为什么重视物质利益原则？", "category": "教育原则", "expected_hit_ids": ["chunk_szzjys_demo_009"], "reference_note": "应命中物质利益原则与农民问题、土地问题相关资料。"}
 {"id": "q009", "question": "三湾改编对人民军队建设有什么意义？", "category": "历史事件", "expected_hit_ids": ["chunk_szzjys_demo_012"], "reference_note": "应命中秋收起义和三湾改编，尤其是支部建在连上、官兵平等等内容。"}
 {"id": "q010", "question": "抗日战争时期党的干部教育为什么重要？", "category": "教育实践", "expected_hit_ids": ["chunk_szzjys_demo_022"], "reference_note": "应命中抗日战争时期干部教育相关资料。"}
+{"id": "q011", "question": "大革命时期思想政治教育理论萌芽主要体现在哪些方面？", "category": "理论发展", "expected_hit_ids": ["chunk_szzjys_demo_010"], "reference_note": "应命中大革命时期思想政治教育理论萌芽的资料。"}
+{"id": "q012", "question": "毛泽东早期思想政治教育实践有哪些重要基础？", "category": "人物思想", "expected_hit_ids": ["chunk_szzjys_demo_011"], "reference_note": "应命中毛泽东思想政治教育思想及其实践基础。"}
+{"id": "q013", "question": "土地革命时期宣传工作的组织领导有什么特点？", "category": "组织建设", "expected_hit_ids": ["chunk_szzjys_demo_013"], "reference_note": "应命中宣传工作的组织领导相关资料。"}
+{"id": "q014", "question": "古田会议决议对思想政治教育有什么深远影响？", "category": "历史事件", "expected_hit_ids": ["chunk_szzjys_demo_014"], "reference_note": "应命中古田会议决议深远影响的资料。"}
+{"id": "q015", "question": "红军反围剿斗争和长征中的思想政治教育发挥了什么作用？", "category": "历史过程", "expected_hit_ids": ["chunk_szzjys_demo_015", "chunk_szzjys_demo_017"], "reference_note": "应命中红军反围剿、长征和提高部队战斗力相关资料。"}
+{"id": "q016", "question": "思想政治教育如何通过政治攻势瓦解敌军？", "category": "教育实践", "expected_hit_ids": ["chunk_szzjys_demo_016"], "reference_note": "应命中加强政治攻势瓦解敌军的资料。"}
+{"id": "q017", "question": "长征时期思想政治教育如何鼓舞士气、提高部队战斗力？", "category": "教育实践", "expected_hit_ids": ["chunk_szzjys_demo_017"], "reference_note": "应命中鼓舞士气提高部队战斗力的资料。"}
+{"id": "q018", "question": "时局转换进程中的思想政治教育有什么任务？", "category": "历史过程", "expected_hit_ids": ["chunk_szzjys_demo_018"], "reference_note": "应命中时局转换进程中的思想政治教育。"}
+{"id": "q019", "question": "思想政治教育在促进西安事变和平解决中有什么作用？", "category": "历史事件", "expected_hit_ids": ["chunk_szzjys_demo_019"], "reference_note": "应命中促进西安事变和平解决相关资料。"}
+{"id": "q020", "question": "中国共产党如何发动民众投身抗战？", "category": "抗战教育", "expected_hit_ids": ["chunk_szzjys_demo_020"], "reference_note": "应命中发动民众投身抗战的资料。"}
+{"id": "q021", "question": "抗日战略方针的宣传教育主要强调什么？", "category": "抗战教育", "expected_hit_ids": ["chunk_szzjys_demo_021"], "reference_note": "应命中抗日战略方针宣传教育相关资料。"}
+{"id": "q022", "question": "抗日军政大学的思想政治教育有什么特点？", "category": "教育实践", "expected_hit_ids": ["chunk_szzjys_demo_023"], "reference_note": "应命中抗日军政大学的思想政治教育资料。"}
+{"id": "q023", "question": "抗战时期思想政治教育理论形成体系主要体现在哪里？", "category": "理论发展", "expected_hit_ids": ["chunk_szzjys_demo_024"], "reference_note": "应命中思想政治教育理论形成体系相关资料。"}
+{"id": "q024", "question": "抗战时期思想政治教育重要论著的发表有什么意义？", "category": "理论发展", "expected_hit_ids": ["chunk_szzjys_demo_025"], "reference_note": "应命中思想政治教育若干重要论著的发表。"}
+{"id": "q025", "question": "党的七大与毛泽东思想对思想政治教育有什么意义？", "category": "理论发展", "expected_hit_ids": ["chunk_szzjys_demo_026"], "reference_note": "应命中党的七大与毛泽东思想相关资料。"}
+{"id": "q026", "question": "延安时期知识分子思想政治教育与文艺座谈会讲话有什么关系？", "category": "延安时期", "expected_hit_ids": ["chunk_szzjys_demo_027"], "reference_note": "应命中知识分子思想政治教育与《在延安文艺座谈会上的讲话》。"}
+{"id": "q027", "question": "大生产运动中的艰苦创业教育体现了什么思想政治教育意义？", "category": "延安时期", "expected_hit_ids": ["chunk_szzjys_demo_028"], "reference_note": "应命中大生产运动与艰苦创业教育。"}
+{"id": "q028", "question": "解放战争时期如何动员全国人民参加解放战争？", "category": "解放战争", "expected_hit_ids": ["chunk_szzjys_demo_029"], "reference_note": "应命中动员全国人民参加解放战争相关资料。"}
+{"id": "q029", "question": "新式整军运动中的思想政治教育有什么作用？", "category": "解放战争", "expected_hit_ids": ["chunk_szzjys_demo_033"], "reference_note": "应命中新式整军运动相关资料。"}
+{"id": "q030", "question": "新中国初期思想文化建设的基本原则和纲领是什么？", "category": "新中国初期", "expected_hit_ids": ["chunk_szzjys_demo_038"], "reference_note": "应命中新中国思想文化建设的基本原则和纲领。"}

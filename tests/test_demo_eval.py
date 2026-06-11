@@ -1,7 +1,7 @@
 import csv
 import json
 
-from src.evaluation.demo_eval import run_evaluation
+from src.evaluation.demo_eval import load_questions, run_evaluation
 
 
 def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
@@ -50,3 +50,12 @@ def test_demo_eval_runs_offline_without_api_key(tmp_path, monkeypatch):
     assert any(float(row["grounded_paragraph_rate"]) >= 0 for row in full_rows)
     assert "grounded_paragraph_rate" in summary["metrics"]["full_system"]
     assert "failed_cases" in summary
+
+
+def test_demo_question_set_has_enough_grounded_items():
+    questions = load_questions("eval/questions_demo.jsonl")
+
+    assert len(questions) >= 30
+    assert len({question["id"] for question in questions}) == len(questions)
+    assert all(question.get("expected_hit_ids") for question in questions)
+    assert all(question.get("reference_note") for question in questions)
