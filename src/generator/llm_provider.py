@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import json
 import os
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -27,6 +28,8 @@ class ZhipuGLMProvider:
     name = "zhipu-glm-4.5-air"
     endpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
     model = "glm-4.5-air"
+    max_retries = 3
+    timeout_seconds = 90
 
     def generate(self, prompt: str) -> LLMGenerationResult:
         api_key = os.getenv("ZHIPUAI_API_KEY", "").strip()
@@ -63,17 +66,22 @@ class ZhipuGLMProvider:
             method="POST",
         )
 
-        try:
-            with urlopen(request, timeout=35) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
-            return LLMGenerationResult(
-                text="",
-                provider_name=self.name,
-                status="api_error",
-            )
+        data = None
+        for attempt in range(self.max_retries):
+            try:
+                with urlopen(request, timeout=self.timeout_seconds) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeEncodeError):
+                if attempt == self.max_retries - 1:
+                    return LLMGenerationResult(
+                        text="",
+                        provider_name=self.name,
+                        status="api_error",
+                    )
+                time.sleep(2 * (attempt + 1))
 
-        choices = data.get("choices") or []
+        choices = (data or {}).get("choices") or []
         if not choices:
             return LLMGenerationResult(
                 text="",
